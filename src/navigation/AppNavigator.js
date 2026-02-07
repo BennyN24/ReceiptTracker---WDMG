@@ -16,7 +16,7 @@ const Stack = createStackNavigator();
 const ExpensesStack = () => (
   <Stack.Navigator>
     <Stack.Screen 
-      name="Expenses" 
+      name="ExpensesList" 
       component={ExpensesScreen}
       options={{ headerShown: false }}
     />
