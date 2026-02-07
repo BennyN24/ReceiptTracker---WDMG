@@ -4,6 +4,7 @@ import {
   FlatList,
   Alert,
   RefreshControl,
+  Picker,
 } from 'react-native';
 import {
   Box,
@@ -241,68 +242,39 @@ const ExpensesScreen = ({ navigation }) => {
       </Box>
 
       {/* Filter Options */}
-      <Box bg={colors.white} px="$4" pb="$4" borderBottomWidth={1} borderBottomColor={colors.border}>
-        <HStack alignItems="center" mb="$3" flexWrap="wrap">
-          <Text fontSize="$sm" fontWeight="$medium" color={colors.textSecondary} mr="$3" minWidth={40}>Sort:</Text>
-          <Pressable
-            onPress={() => setSortBy('newest')}
-            bg={sortBy === 'newest' ? colors.primary : colors.white}
-            borderWidth={1}
-            borderColor={sortBy === 'newest' ? colors.primary : colors.border}
-            borderRadius="$full"
-            px="$3"
-            py="$1.5"
-            mr="$2"
-            mb="$1"
-          >
-            <Text fontSize="$xs" fontWeight="$medium" color={sortBy === 'newest' ? colors.white : colors.textSecondary}>Newest First</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setSortBy('oldest')}
-            bg={sortBy === 'oldest' ? colors.primary : colors.white}
-            borderWidth={1}
-            borderColor={sortBy === 'oldest' ? colors.primary : colors.border}
-            borderRadius="$full"
-            px="$3"
-            py="$1.5"
-            mr="$2"
-            mb="$1"
-          >
-            <Text fontSize="$xs" fontWeight="$medium" color={sortBy === 'oldest' ? colors.white : colors.textSecondary}>Oldest First</Text>
-          </Pressable>
-        </HStack>
+      <Box bg={colors.white} px="$4" py="$4" borderBottomWidth={1} borderBottomColor={colors.border}>
+        <HStack space="md" alignItems="center" mb="$3">
+          <VStack flex={1}>
+            <Text fontSize="$xs" fontWeight="$medium" color={colors.textSecondary} mb="$1">Sort By</Text>
+            <Box borderWidth={1} borderColor={colors.border} borderRadius="$lg" bg={colors.white} overflow="hidden">
+              <Picker
+                selectedValue={sortBy}
+                onValueChange={(value) => setSortBy(value)}
+                style={{ height: 40 }}
+              >
+                <Picker.Item label="Newest First" value="newest" />
+                <Picker.Item label="Oldest First" value="oldest" />
+                <Picker.Item label="Highest Amount" value="highest" />
+                <Picker.Item label="Lowest Amount" value="lowest" />
+              </Picker>
+            </Box>
+          </VStack>
 
-        <HStack alignItems="center" mb="$3" flexWrap="wrap">
-          <Text fontSize="$sm" fontWeight="$medium" color={colors.textSecondary} mr="$3" minWidth={40}>Category:</Text>
-          <Pressable
-            onPress={() => setSelectedCategory(null)}
-            bg={!selectedCategory ? colors.primary : colors.white}
-            borderWidth={1}
-            borderColor={!selectedCategory ? colors.primary : colors.border}
-            borderRadius="$full"
-            px="$3"
-            py="$1.5"
-            mr="$2"
-            mb="$1"
-          >
-            <Text fontSize="$xs" fontWeight="$medium" color={!selectedCategory ? colors.white : colors.textSecondary}>All</Text>
-          </Pressable>
-          {categories.slice(0, 3).map((category) => (
-            <Pressable
-              key={category.id}
-              onPress={() => setSelectedCategory(category.id)}
-              bg={selectedCategory === category.id ? colors.primary : colors.white}
-              borderWidth={1}
-              borderColor={selectedCategory === category.id ? colors.primary : colors.border}
-              borderRadius="$full"
-              px="$3"
-              py="$1.5"
-              mr="$2"
-              mb="$1"
-            >
-              <Text fontSize="$xs" fontWeight="$medium" color={selectedCategory === category.id ? colors.white : colors.textSecondary}>{category.name}</Text>
-            </Pressable>
-          ))}
+          <VStack flex={1}>
+            <Text fontSize="$xs" fontWeight="$medium" color={colors.textSecondary} mb="$1">Category</Text>
+            <Box borderWidth={1} borderColor={colors.border} borderRadius="$lg" bg={colors.white} overflow="hidden">
+              <Picker
+                selectedValue={selectedCategory || 'all'}
+                onValueChange={(value) => setSelectedCategory(value === 'all' ? null : value)}
+                style={{ height: 40 }}
+              >
+                <Picker.Item label="All Categories" value="all" />
+                {categories.map((category) => (
+                  <Picker.Item key={category.id} label={category.name} value={category.id} />
+                ))}
+              </Picker>
+            </Box>
+          </VStack>
         </HStack>
 
         {(searchQuery || selectedCategory || sortBy !== 'newest') && (
