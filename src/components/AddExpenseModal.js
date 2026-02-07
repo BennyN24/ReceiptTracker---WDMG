@@ -24,7 +24,8 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData }) => {
   const [amount, setAmount] = useState(
     initialData?.amount ? String(initialData.amount) : ''
   );
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [description, setDescription] = useState(initialData?.description || '');
+  const [selectedCategory, setSelectedCategory] = useState(initialData?.category || '');
   const [date, setDate] = useState(
     initialData?.date ? new Date(initialData.date + 'T00:00:00') : new Date()
   );
@@ -60,6 +61,7 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData }) => {
     const expenseData = {
       vendor: vendor.trim(),
       amount: parseFloat(amount),
+      description: description.trim(),
       category: selectedCategory,
       date: date.toISOString().split('T')[0],
     };
@@ -133,6 +135,20 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData }) => {
             {errors.amount && (
               <Text style={styles.errorText}>{errors.amount}</Text>
             )}
+          </View>
+
+          {/* Description Input */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Description</Text>
+            <TextInput
+              label="Items or notes"
+              value={description}
+              onChangeText={setDescription}
+              mode="outlined"
+              multiline
+              numberOfLines={4}
+              style={[styles.input, styles.descriptionInput]}
+            />
           </View>
 
           {/* Category Selection */}
@@ -242,6 +258,10 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: '#ffffff',
+  },
+  descriptionInput: {
+    minHeight: 100,
+    textAlignVertical: 'top',
   },
   errorText: {
     fontSize: 12,
