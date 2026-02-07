@@ -215,7 +215,7 @@ const BudgetsScreen = ({ navigation }) => {
         mode="contained"
         onPress={() => setShowAddModal(true)}
         style={styles.addButton}
-        icon="add"
+        icon="plus"
       >
         Create Your First Budget
       </Button>
@@ -251,7 +251,7 @@ const BudgetsScreen = ({ navigation }) => {
 
       {/* Floating Action Button */}
       <FAB
-        icon="add"
+        icon="plus"
         style={styles.fab}
         onPress={() => setShowAddModal(true)}
       />

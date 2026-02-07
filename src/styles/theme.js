@@ -33,5 +33,6 @@ export const theme = {
   roundness: 12,
   animation: {
     scale: 1.0,
+    useNativeDriver: false,
   },
 };

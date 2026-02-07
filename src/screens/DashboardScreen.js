@@ -133,7 +133,7 @@ const DashboardScreen = ({ navigation }) => {
         <Surface style={styles.statCard}>
           <View style={styles.statContent}>
             <Icon name="trending-up" size={24} color="#ef4444" />
-            <Text style={styles.statValue}>{getCurrentMonthExpenses().length}</Text>
+            <Text style={styles.statValue}>{getCurrentMonthExpenses.length}</Text>
             <Text style={styles.statLabel}>Transactions</Text>
           </View>
         </Surface>
@@ -203,7 +203,7 @@ const DashboardScreen = ({ navigation }) => {
           mode="outlined"
           onPress={() => navigation.navigate('Expenses')}
           style={styles.actionButton}
-          icon="add"
+          icon="plus"
         >
           Add Expense
         </Button>

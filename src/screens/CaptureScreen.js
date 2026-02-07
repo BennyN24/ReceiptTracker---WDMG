@@ -15,15 +15,15 @@ import {
   Appbar,
   ActivityIndicator,
 } from 'react-native-paper';
-import { Camera } from 'expo-camera';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import AddExpenseModal from '../components/AddExpenseModal';
 import { StorageService } from '../services/StorageService';
 
 const CaptureScreen = ({ navigation }) => {
-  const [hasPermission, setHasPermission] = useState(null);
-  const [cameraType, setCameraType] = useState(Camera.Constants.Type.back);
+  const [facing, setFacing] = useState('back');
+  const [permission, requestPermission] = useCameraPermissions();
   const [capturedImage, setCapturedImage] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -31,7 +31,6 @@ const CaptureScreen = ({ navigation }) => {
   const cameraRef = useRef();
 
   React.useEffect(() => {
-    checkCameraPermission();
     loadCategories();
     
     return () => {
@@ -40,11 +39,6 @@ const CaptureScreen = ({ navigation }) => {
       }
     };
   }, []);
-
-  const checkCameraPermission = async () => {
-    const { status } = await Camera.requestCameraPermissionsAsync();
-    setHasPermission(status === 'granted');
-  };
 
   const loadCategories = async () => {
     try {
@@ -120,14 +114,10 @@ const CaptureScreen = ({ navigation }) => {
   };
 
   const toggleCameraType = () => {
-    setCameraType(
-      cameraType === Camera.Constants.Type.back
-        ? Camera.Constants.Type.front
-        : Camera.Constants.Type.back
-    );
+    setFacing(facing === 'back' ? 'front' : 'back');
   };
 
-  if (hasPermission === null) {
+  if (!permission) {
     return (
       <View style={styles.permissionContainer}>
         <Text style={styles.permissionText}>Requesting camera permission...</Text>
@@ -135,7 +125,7 @@ const CaptureScreen = ({ navigation }) => {
     );
   }
 
-  if (hasPermission === false) {
+  if (!permission.granted) {
     return (
       <View style={styles.permissionContainer}>
         <Icon name="camera-alt" size={64} color="#94a3b8" />
@@ -145,7 +135,7 @@ const CaptureScreen = ({ navigation }) => {
         </Text>
         <Button
           mode="contained"
-          onPress={checkCameraPermission}
+          onPress={requestPermission}
           style={styles.retryButton}
         >
           Retry
@@ -159,9 +149,9 @@ const CaptureScreen = ({ navigation }) => {
       {!capturedImage ? (
         // Camera View
         <View style={styles.cameraContainer}>
-          <Camera
+          <CameraView
             style={styles.camera}
-            type={cameraType}
+            facing={facing}
             ref={cameraRef}
           >
             <View style={styles.cameraOverlay}>
@@ -192,7 +182,7 @@ const CaptureScreen = ({ navigation }) => {
                 <View style={styles.placeholderButton} />
               </View>
             </View>
-          </Camera>
+          </CameraView>
 
           <View style={styles.instructions}>
             <Text style={styles.instructionText}>Tap to Take Photo</Text>

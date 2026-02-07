@@ -198,7 +198,7 @@ const ExpensesScreen = ({ navigation }) => {
           mode="contained"
           onPress={() => setShowAddModal(true)}
           style={styles.addButton}
-          icon="add"
+          icon="plus"
         >
           Add Your First Expense
         </Button>
@@ -291,7 +291,7 @@ const ExpensesScreen = ({ navigation }) => {
 
       {/* Floating Action Button */}
       <FAB
-        icon="add"
+        icon="plus"
         style={styles.fab}
         onPress={() => setShowAddModal(true)}
       />
