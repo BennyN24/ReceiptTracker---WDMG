@@ -54,7 +54,7 @@ const AppNavigator = () => {
 
           return <Icon name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#6366f1',
+        tabBarActiveTintColor: '#16a34a',
         tabBarInactiveTintColor: '#94a3b8',
         tabBarStyle: {
           backgroundColor: '#ffffff',

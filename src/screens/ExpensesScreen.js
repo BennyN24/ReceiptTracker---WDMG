@@ -1,23 +1,28 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  View,
-  Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
   Alert,
   RefreshControl,
 } from 'react-native';
 import {
-  Card,
-  Button,
-  Searchbar,
-  Chip,
-  FAB,
-} from 'react-native-paper';
+  Box,
+  Text,
+  HStack,
+  VStack,
+  Pressable,
+  Input,
+  InputField,
+  InputIcon,
+  InputSlot,
+  Badge,
+  BadgeText,
+  Spinner,
+} from '@gluestack-ui/themed';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import AddExpenseModal from '../components/AddExpenseModal';
 import { StorageService } from '../services/StorageService';
+import { colors } from '../styles/theme';
 
 const ExpensesScreen = ({ navigation }) => {
   const [expenses, setExpenses] = useState([]);
@@ -162,149 +167,184 @@ const ExpensesScreen = ({ navigation }) => {
   };
 
   const renderExpenseItem = ({ item }) => (
-    <Card style={styles.expenseCard}>
-      <Card.Content>
-        <View style={styles.expenseHeader}>
-          <View style={styles.expenseInfo}>
-            <Text style={styles.expenseVendor}>{item.vendor}</Text>
-            <Text style={styles.expenseDate}>{formatDate(item.date)}</Text>
-          </View>
-          <View style={styles.expenseAmountContainer}>
-            <Text style={styles.expenseAmount}>{formatCurrency(item.amount)}</Text>
-            <TouchableOpacity
-              onPress={() => handleDeleteExpense(item.id)}
-              style={styles.deleteButton}
-            >
-              <Icon name="delete" size={20} color="#ef4444" />
-            </TouchableOpacity>
-          </View>
-        </View>
-        <View style={styles.categoryContainer}>
-          <Chip
-            style={[styles.categoryChip, { backgroundColor: getCategoryColor(item.category) }]}
-            textStyle={styles.categoryText}
-          >
-            {getCategoryName(item.category)}
-          </Chip>
-        </View>
-      </Card.Content>
-    </Card>
+    <Box mb="$3" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
+      <HStack justifyContent="space-between" alignItems="flex-start">
+        <VStack flex={1}>
+          <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$1">{item.vendor}</Text>
+          <Text fontSize="$sm" color={colors.textSecondary}>{formatDate(item.date)}</Text>
+        </VStack>
+        <VStack alignItems="flex-end">
+          <Text fontWeight="$bold" fontSize="$md" color={colors.error} mb="$1">{formatCurrency(item.amount)}</Text>
+          <Pressable onPress={() => handleDeleteExpense(item.id)} p="$1">
+            <Icon name="delete" size={20} color={colors.error} />
+          </Pressable>
+        </VStack>
+      </HStack>
+      <Box mt="$3">
+        <Box alignSelf="flex-start" bg={getCategoryColor(item.category)} borderRadius="$full" px="$3" py="$1">
+          <Text color={colors.white} fontSize="$xs" fontWeight="$medium">{getCategoryName(item.category)}</Text>
+        </Box>
+      </Box>
+    </Box>
   );
 
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <Icon name="receipt" size={64} color="#94a3b8" />
-      <Text style={styles.emptyTitle}>No expenses found</Text>
-      <Text style={styles.emptySubtitle}>
+    <VStack alignItems="center" justifyContent="center" py="$16" px="$8">
+      <Icon name="receipt" size={64} color={colors.textMuted} />
+      <Text fontWeight="$semibold" fontSize="$xl" color={colors.text} mt="$4" mb="$2">No expenses found</Text>
+      <Text fontSize="$md" color={colors.textSecondary} textAlign="center" mb="$6">
         {searchQuery || selectedCategory
           ? 'Try adjusting your filters'
           : 'Start tracking your expenses by adding your first one'}
       </Text>
       {!searchQuery && !selectedCategory && (
-        <Button
-          mode="contained"
+        <Pressable
           onPress={() => setShowAddModal(true)}
-          style={styles.addButton}
-          icon="plus"
+          bg={colors.primary}
+          borderRadius="$lg"
+          px="$6"
+          py="$3"
+          flexDirection="row"
+          alignItems="center"
         >
-          Add Your First Expense
-        </Button>
+          <Icon name="add" size={20} color={colors.white} />
+          <Text color={colors.white} fontWeight="$semibold" ml="$2">Add Your First Expense</Text>
+        </Pressable>
       )}
-    </View>
+    </VStack>
   );
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>Loading expenses...</Text>
-      </View>
+      <Box flex={1} justifyContent="center" alignItems="center" bg={colors.backgroundSecondary}>
+        <Spinner size="large" color={colors.primary} />
+        <Text mt="$3" color={colors.textSecondary}>Loading expenses...</Text>
+      </Box>
     );
   }
 
   return (
-    <View style={styles.container}>
-      {/* Search and Filters */}
-      <View style={styles.searchContainer}>
-        <Searchbar
-          placeholder="Search vendor..."
-          onChangeText={setSearchQuery}
-          value={searchQuery}
-          style={styles.searchBar}
-        />
-      </View>
+    <Box flex={1} bg={colors.backgroundSecondary}>
+      {/* Search */}
+      <Box p="$4" bg={colors.white} borderBottomWidth={1} borderBottomColor={colors.border}>
+        <Input borderRadius="$lg" bg="$coolGray100" borderColor="$coolGray200">
+          <InputSlot pl="$3">
+            <Icon name="search" size={20} color={colors.textSecondary} />
+          </InputSlot>
+          <InputField
+            placeholder="Search vendor..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            fontSize="$md"
+          />
+        </Input>
+      </Box>
 
       {/* Filter Options */}
-      <View style={styles.filtersContainer}>
-        <View style={styles.filterRow}>
-          <Text style={styles.filterLabel}>Sort:</Text>
-          <Chip
-            selected={sortBy === 'newest'}
+      <Box bg={colors.white} px="$4" pb="$4" borderBottomWidth={1} borderBottomColor={colors.border}>
+        <HStack alignItems="center" mb="$3" flexWrap="wrap">
+          <Text fontSize="$sm" fontWeight="$medium" color={colors.textSecondary} mr="$3" minWidth={40}>Sort:</Text>
+          <Pressable
             onPress={() => setSortBy('newest')}
-            style={styles.filterChip}
+            bg={sortBy === 'newest' ? colors.primary : colors.white}
+            borderWidth={1}
+            borderColor={sortBy === 'newest' ? colors.primary : colors.border}
+            borderRadius="$full"
+            px="$3"
+            py="$1.5"
+            mr="$2"
+            mb="$1"
           >
-            Newest First
-          </Chip>
-          <Chip
-            selected={sortBy === 'oldest'}
+            <Text fontSize="$xs" fontWeight="$medium" color={sortBy === 'newest' ? colors.white : colors.textSecondary}>Newest First</Text>
+          </Pressable>
+          <Pressable
             onPress={() => setSortBy('oldest')}
-            style={styles.filterChip}
+            bg={sortBy === 'oldest' ? colors.primary : colors.white}
+            borderWidth={1}
+            borderColor={sortBy === 'oldest' ? colors.primary : colors.border}
+            borderRadius="$full"
+            px="$3"
+            py="$1.5"
+            mr="$2"
+            mb="$1"
           >
-            Oldest First
-          </Chip>
-        </View>
+            <Text fontSize="$xs" fontWeight="$medium" color={sortBy === 'oldest' ? colors.white : colors.textSecondary}>Oldest First</Text>
+          </Pressable>
+        </HStack>
 
-        <View style={styles.filterRow}>
-          <Text style={styles.filterLabel}>Category:</Text>
-          <Chip
-            selected={!selectedCategory}
+        <HStack alignItems="center" mb="$3" flexWrap="wrap">
+          <Text fontSize="$sm" fontWeight="$medium" color={colors.textSecondary} mr="$3" minWidth={40}>Category:</Text>
+          <Pressable
             onPress={() => setSelectedCategory(null)}
-            style={styles.filterChip}
+            bg={!selectedCategory ? colors.primary : colors.white}
+            borderWidth={1}
+            borderColor={!selectedCategory ? colors.primary : colors.border}
+            borderRadius="$full"
+            px="$3"
+            py="$1.5"
+            mr="$2"
+            mb="$1"
           >
-            All
-          </Chip>
+            <Text fontSize="$xs" fontWeight="$medium" color={!selectedCategory ? colors.white : colors.textSecondary}>All</Text>
+          </Pressable>
           {categories.slice(0, 3).map((category) => (
-            <Chip
+            <Pressable
               key={category.id}
-              selected={selectedCategory === category.id}
               onPress={() => setSelectedCategory(category.id)}
-              style={styles.filterChip}
+              bg={selectedCategory === category.id ? colors.primary : colors.white}
+              borderWidth={1}
+              borderColor={selectedCategory === category.id ? colors.primary : colors.border}
+              borderRadius="$full"
+              px="$3"
+              py="$1.5"
+              mr="$2"
+              mb="$1"
             >
-              {category.name}
-            </Chip>
+              <Text fontSize="$xs" fontWeight="$medium" color={selectedCategory === category.id ? colors.white : colors.textSecondary}>{category.name}</Text>
+            </Pressable>
           ))}
-        </View>
+        </HStack>
 
         {(searchQuery || selectedCategory || sortBy !== 'newest') && (
-          <Button
-            mode="text"
-            onPress={clearFilters}
-            style={styles.clearFiltersButton}
-            textColor="#6366f1"
-          >
-            Clear Filters
-          </Button>
+          <Pressable onPress={clearFilters} alignSelf="flex-start">
+            <Text color={colors.primary} fontSize="$sm" fontWeight="$medium">Clear Filters</Text>
+          </Pressable>
         )}
-      </View>
+      </Box>
 
       {/* Expenses List */}
       <FlatList
         data={filterAndSortExpenses}
         renderItem={renderExpenseItem}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={{ padding: 16 }}
         ListEmptyComponent={renderEmptyState}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6366f1']} tintColor="#6366f1" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />
         }
       />
 
       {/* Floating Action Button */}
-      <FAB
-        icon="plus"
-        style={styles.fab}
+      <Pressable
         onPress={() => setShowAddModal(true)}
-      />
+        position="absolute"
+        right="$4"
+        bottom="$4"
+        bg={colors.primary}
+        w={56}
+        h={56}
+        borderRadius="$full"
+        alignItems="center"
+        justifyContent="center"
+        shadowColor={colors.primary}
+        shadowOffset={{ width: 0, height: 4 }}
+        shadowOpacity={0.3}
+        shadowRadius={8}
+        elevation={6}
+      >
+        <Icon name="add" size={28} color={colors.white} />
+      </Pressable>
 
       {/* Add Expense Modal */}
       {showAddModal && (
@@ -314,132 +354,8 @@ const ExpensesScreen = ({ navigation }) => {
           categories={categories}
         />
       )}
-    </View>
+    </Box>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  searchContainer: {
-    padding: 16,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  searchBar: {
-    elevation: 0,
-    backgroundColor: '#f1f5f9',
-  },
-  filtersContainer: {
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  filterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    flexWrap: 'wrap',
-  },
-  filterLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#64748b',
-    marginRight: 12,
-    minWidth: 40,
-  },
-  filterChip: {
-    marginRight: 8,
-    marginBottom: 4,
-  },
-  clearFiltersButton: {
-    alignSelf: 'flex-start',
-  },
-  listContainer: {
-    padding: 16,
-  },
-  expenseCard: {
-    marginBottom: 12,
-    backgroundColor: '#ffffff',
-  },
-  expenseHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  expenseInfo: {
-    flex: 1,
-  },
-  expenseVendor: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  expenseDate: {
-    fontSize: 14,
-    color: '#64748b',
-  },
-  expenseAmountContainer: {
-    alignItems: 'flex-end',
-  },
-  expenseAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#ef4444',
-    marginBottom: 4,
-  },
-  deleteButton: {
-    padding: 4,
-  },
-  categoryContainer: {
-    marginTop: 12,
-  },
-  categoryChip: {
-    alignSelf: 'flex-start',
-  },
-  categoryText: {
-    color: '#ffffff',
-    fontSize: 12,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 64,
-    paddingHorizontal: 32,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 16,
-    color: '#64748b',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  addButton: {
-    backgroundColor: '#6366f1',
-  },
-  fab: {
-    position: 'absolute',
-    right: 16,
-    bottom: 16,
-    backgroundColor: '#6366f1',
-  },
-});
 
 export default ExpensesScreen;

@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   Alert,
   Switch,
   Modal,
@@ -12,15 +7,22 @@ import {
   RefreshControl,
 } from 'react-native';
 import {
-  Card,
-  Button,
-  List,
-  TextInput,
+  Box,
+  Text,
+  VStack,
+  HStack,
+  Heading,
+  Pressable,
+  ScrollView,
+  Input,
+  InputField,
   Divider,
-} from 'react-native-paper';
+  Spinner,
+} from '@gluestack-ui/themed';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import { StorageService } from '../services/StorageService';
 import CurrencyService from '../services/CurrencyService';
+import { colors } from '../styles/theme';
 
 const SettingsScreen = ({ navigation }) => {
   const [settings, setSettings] = useState({});
@@ -147,51 +149,55 @@ const SettingsScreen = ({ navigation }) => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>Loading settings...</Text>
-      </View>
+      <Box flex={1} justifyContent="center" alignItems="center" bg={colors.backgroundSecondary}>
+        <Spinner size="large" color={colors.primary} />
+        <Text mt="$3" color={colors.textSecondary}>Loading settings...</Text>
+      </Box>
     );
   }
 
   return (
     <ScrollView
-      style={styles.container}
+      bg={colors.backgroundSecondary}
       showsVerticalScrollIndicator={false}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6366f1']} tintColor="#6366f1" />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />
       }
     >
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Settings</Text>
-        <Text style={styles.subtitle}>Manage your app preferences</Text>
-      </View>
+      <Box px="$5" pt="$10" pb="$4" bg={colors.white} borderBottomWidth={1} borderBottomColor={colors.border}>
+        <Heading size="2xl" color={colors.text} mb="$1">Settings</Heading>
+        <Text color={colors.textSecondary} fontSize="$md">Manage your app preferences</Text>
+      </Box>
 
       {/* Budget Settings */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Text style={styles.sectionTitle}>Budget Settings</Text>
-          
-          <View style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Monthly Budget</Text>
-              <Text style={styles.settingValue}>
-                {formatCurrency(settings.monthlyBudget || 1550)}
-              </Text>
-            </View>
-            <Button
-              mode="outlined"
-              onPress={() => setEditingBudget(true)}
-              style={styles.editButton}
-            >
-              Edit
-            </Button>
-          </View>
+      <Box mx="$4" mt="$4" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
+        <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$4">Budget Settings</Text>
+        
+        <HStack justifyContent="space-between" alignItems="center" py="$2">
+          <VStack flex={1} mr="$4">
+            <Text fontWeight="$medium" fontSize="$md" color={colors.text} mb="$1">Monthly Budget</Text>
+            <Text fontSize="$md" color={colors.primary} fontWeight="$semibold">
+              {formatCurrency(settings.monthlyBudget || 1550)}
+            </Text>
+          </VStack>
+          <Pressable
+            onPress={() => setEditingBudget(true)}
+            borderWidth={1.5}
+            borderColor={colors.primary}
+            borderRadius="$lg"
+            px="$4"
+            py="$2"
+          >
+            <Text color={colors.primary} fontWeight="$medium" fontSize="$sm">Edit</Text>
+          </Pressable>
+        </HStack>
 
-          {editingBudget && (
-            <View style={styles.budgetEditor}>
-              <TextInput
-                label="Monthly Budget Amount"
+        {editingBudget && (
+          <VStack mt="$4" pt="$4" borderTopWidth={1} borderTopColor={colors.border}>
+            <Input borderRadius="$lg" borderColor={colors.border} mb="$3">
+              <InputField
+                placeholder="Monthly Budget Amount"
                 value={tempBudget}
                 onChangeText={(text) => {
                   // Only allow numeric input with decimal point
@@ -204,151 +210,148 @@ const SettingsScreen = ({ navigation }) => {
                     setTempBudget(numericValue);
                   }
                 }}
-                mode="outlined"
                 keyboardType="numeric"
-                style={styles.budgetInput}
+                fontSize="$md"
               />
-              <View style={styles.budgetButtons}>
-                <Button
-                  mode="contained"
-                  onPress={handleSaveBudget}
-                  style={styles.saveButton}
-                >
-                  Save
-                </Button>
-                <Button
-                  mode="text"
-                  onPress={() => {
-                    setEditingBudget(false);
-                    setTempBudget(settings.monthlyBudget?.toString() || '1550');
-                  }}
-                >
-                  Cancel
-                </Button>
-              </View>
-            </View>
-          )}
-        </Card.Content>
-      </Card>
+            </Input>
+            <HStack space="md">
+              <Pressable
+                onPress={handleSaveBudget}
+                bg={colors.primary}
+                borderRadius="$lg"
+                px="$5"
+                py="$2.5"
+              >
+                <Text color={colors.white} fontWeight="$semibold">Save</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  setEditingBudget(false);
+                  setTempBudget(settings.monthlyBudget?.toString() || '1550');
+                }}
+                px="$5"
+                py="$2.5"
+              >
+                <Text color={colors.textSecondary} fontWeight="$medium">Cancel</Text>
+              </Pressable>
+            </HStack>
+          </VStack>
+        )}
+      </Box>
 
       {/* App Preferences */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Text style={styles.sectionTitle}>App Preferences</Text>
-          
-          <View style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Preferred Currency</Text>
-              <Text style={styles.settingValue}>
-                {settings.currency || 'USD'} ({CurrencyService.getSymbol(settings.currency || 'USD')})
-              </Text>
-            </View>
-            <Button
-              mode="outlined"
-              onPress={() => setShowCurrencyModal(true)}
-              style={styles.editButton}
-            >
-              Change
-            </Button>
-          </View>
+      <Box mx="$4" mt="$4" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
+        <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$4">App Preferences</Text>
+        
+        <HStack justifyContent="space-between" alignItems="center" py="$2">
+          <VStack flex={1} mr="$4">
+            <Text fontWeight="$medium" fontSize="$md" color={colors.text} mb="$1">Preferred Currency</Text>
+            <Text fontSize="$md" color={colors.primary} fontWeight="$semibold">
+              {settings.currency || 'USD'} ({CurrencyService.getSymbol(settings.currency || 'USD')})
+            </Text>
+          </VStack>
+          <Pressable
+            onPress={() => setShowCurrencyModal(true)}
+            borderWidth={1.5}
+            borderColor={colors.primary}
+            borderRadius="$lg"
+            px="$4"
+            py="$2"
+          >
+            <Text color={colors.primary} fontWeight="$medium" fontSize="$sm">Change</Text>
+          </Pressable>
+        </HStack>
 
-          <Divider style={styles.divider} />
-          
-          <View style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Push Notifications</Text>
-              <Text style={styles.settingDescription}>
-                Get alerts for budget limits and reminders
-              </Text>
-            </View>
-            <Switch
-              value={settings.notifications}
-              onValueChange={(value) => updateSetting('notifications', value)}
-              trackColor={{ false: '#e2e8f0', true: '#c7d2fe' }}
-              thumbColor={settings.notifications ? '#6366f1' : '#ffffff'}
-            />
-          </View>
+        <Divider my="$4" />
+        
+        <HStack justifyContent="space-between" alignItems="center" py="$2">
+          <VStack flex={1} mr="$4">
+            <Text fontWeight="$medium" fontSize="$md" color={colors.text} mb="$1">Push Notifications</Text>
+            <Text fontSize="$sm" color={colors.textSecondary}>
+              Get alerts for budget limits and reminders
+            </Text>
+          </VStack>
+          <Switch
+            value={settings.notifications}
+            onValueChange={(value) => updateSetting('notifications', value)}
+            trackColor={{ false: '#e2e8f0', true: colors.primaryLighter }}
+            thumbColor={settings.notifications ? colors.primary : '#ffffff'}
+          />
+        </HStack>
 
-          <Divider style={styles.divider} />
+        <Divider my="$4" />
 
-          <View style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Dark Mode</Text>
-              <Text style={styles.settingDescription}>
-                Use dark theme across the app
-              </Text>
-            </View>
-            <Switch
-              value={settings.darkMode}
-              onValueChange={(value) => updateSetting('darkMode', value)}
-              trackColor={{ false: '#e2e8f0', true: '#c7d2fe' }}
-              thumbColor={settings.darkMode ? '#6366f1' : '#ffffff'}
-            />
-          </View>
-        </Card.Content>
-      </Card>
+        <HStack justifyContent="space-between" alignItems="center" py="$2">
+          <VStack flex={1} mr="$4">
+            <Text fontWeight="$medium" fontSize="$md" color={colors.text} mb="$1">Dark Mode</Text>
+            <Text fontSize="$sm" color={colors.textSecondary}>
+              Use dark theme across the app
+            </Text>
+          </VStack>
+          <Switch
+            value={settings.darkMode}
+            onValueChange={(value) => updateSetting('darkMode', value)}
+            trackColor={{ false: '#e2e8f0', true: colors.primaryLighter }}
+            thumbColor={settings.darkMode ? colors.primary : '#ffffff'}
+          />
+        </HStack>
+      </Box>
 
       {/* Data Management */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Text style={styles.sectionTitle}>Data Management</Text>
-          
-          <TouchableOpacity
-            style={styles.actionItem}
-            onPress={handleExportData}
-          >
-            <View style={styles.actionInfo}>
-              <Icon name="file-download" size={24} color="#6366f1" />
-              <View style={styles.actionText}>
-                <Text style={styles.actionLabel}>Export Data</Text>
-                <Text style={styles.actionDescription}>
+      <Box mx="$4" mt="$4" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
+        <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$4">Data Management</Text>
+        
+        <Pressable onPress={handleExportData} py="$3">
+          <HStack justifyContent="space-between" alignItems="center">
+            <HStack alignItems="center" flex={1}>
+              <Icon name="file-download" size={24} color={colors.primary} />
+              <VStack ml="$3" flex={1}>
+                <Text fontWeight="$medium" fontSize="$md" color={colors.text} mb="$1">Export Data</Text>
+                <Text fontSize="$sm" color={colors.textSecondary}>
                   Download all your expenses and budgets
                 </Text>
-              </View>
-            </View>
-            <Icon name="chevron-right" size={24} color="#94a3b8" />
-          </TouchableOpacity>
+              </VStack>
+            </HStack>
+            <Icon name="chevron-right" size={24} color={colors.textMuted} />
+          </HStack>
+        </Pressable>
 
-          <Divider style={styles.divider} />
+        <Divider my="$4" />
 
-          <TouchableOpacity
-            style={styles.actionItem}
-            onPress={handleClearData}
-          >
-            <View style={styles.actionInfo}>
-              <Icon name="delete-forever" size={24} color="#ef4444" />
-              <View style={styles.actionText}>
-                <Text style={[styles.actionLabel, { color: '#ef4444' }]}>
+        <Pressable onPress={handleClearData} py="$3">
+          <HStack justifyContent="space-between" alignItems="center">
+            <HStack alignItems="center" flex={1}>
+              <Icon name="delete-forever" size={24} color={colors.error} />
+              <VStack ml="$3" flex={1}>
+                <Text fontWeight="$medium" fontSize="$md" color={colors.error} mb="$1">
                   Clear All Data
                 </Text>
-                <Text style={styles.actionDescription}>
+                <Text fontSize="$sm" color={colors.textSecondary}>
                   Permanently delete all expenses and budgets
                 </Text>
-              </View>
-            </View>
-            <Icon name="chevron-right" size={24} color="#94a3b8" />
-          </TouchableOpacity>
-        </Card.Content>
-      </Card>
+              </VStack>
+            </HStack>
+            <Icon name="chevron-right" size={24} color={colors.textMuted} />
+          </HStack>
+        </Pressable>
+      </Box>
 
       {/* About */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Text style={styles.sectionTitle}>About</Text>
-          
-          <View style={styles.aboutItem}>
-            <Text style={styles.aboutLabel}>App Version</Text>
-            <Text style={styles.aboutValue}>1.0.0</Text>
-          </View>
+      <Box mx="$4" mt="$4" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
+        <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$4">About</Text>
+        
+        <HStack justifyContent="space-between" alignItems="center" py="$2">
+          <Text fontSize="$md" color={colors.textSecondary}>App Version</Text>
+          <Text fontSize="$md" color={colors.text} fontWeight="$medium">1.0.0</Text>
+        </HStack>
 
-          <View style={styles.aboutItem}>
-            <Text style={styles.aboutLabel}>Developer</Text>
-            <Text style={styles.aboutValue}>Receipt Tracker Pro</Text>
-          </View>
-        </Card.Content>
-      </Card>
+        <HStack justifyContent="space-between" alignItems="center" py="$2">
+          <Text fontSize="$md" color={colors.textSecondary}>Developer</Text>
+          <Text fontSize="$md" color={colors.text} fontWeight="$medium">Receipt Tracker Pro</Text>
+        </HStack>
+      </Box>
 
-      <View style={styles.bottomPadding} />
+      <Box h={20} />
 
       {/* Currency Selection Modal */}
       <Modal
@@ -357,230 +360,46 @@ const SettingsScreen = ({ navigation }) => {
         animationType="slide"
         onRequestClose={() => setShowCurrencyModal(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Currency</Text>
-              <TouchableOpacity onPress={() => setShowCurrencyModal(false)}>
-                <Icon name="close" size={24} color="#1e293b" />
-              </TouchableOpacity>
-            </View>
+        <Box flex={1} bg="rgba(0, 0, 0, 0.5)" justifyContent="flex-end">
+          <Box bg={colors.white} borderTopLeftRadius="$2xl" borderTopRightRadius="$2xl" maxHeight="80%" pt="$4">
+            <HStack justifyContent="space-between" alignItems="center" px="$5" pb="$4" borderBottomWidth={1} borderBottomColor={colors.border}>
+              <Text fontWeight="$semibold" fontSize="$lg" color={colors.text}>Select Currency</Text>
+              <Pressable onPress={() => setShowCurrencyModal(false)}>
+                <Icon name="close" size={24} color={colors.text} />
+              </Pressable>
+            </HStack>
             
             <FlatList
               data={currencies}
               renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.currencyOption,
-                    settings.currency === item.code && styles.currencyOptionSelected,
-                  ]}
+                <Pressable
                   onPress={() => handleCurrencyChange(item.code)}
+                  px="$5"
+                  py="$4"
+                  borderBottomWidth={1}
+                  borderBottomColor={colors.border}
+                  bg={settings.currency === item.code ? colors.primaryLightest : colors.white}
                 >
-                  <View style={styles.currencyOptionContent}>
-                    <Text style={styles.currencyCode}>{item.code}</Text>
-                    <Text style={styles.currencyName}>{item.name}</Text>
-                  </View>
-                  <Text style={styles.currencySymbol}>{item.symbol}</Text>
-                  {settings.currency === item.code && (
-                    <Icon name="check" size={24} color="#6366f1" />
-                  )}
-                </TouchableOpacity>
+                  <HStack justifyContent="space-between" alignItems="center">
+                    <VStack flex={1}>
+                      <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$1">{item.code}</Text>
+                      <Text fontSize="$sm" color={colors.textSecondary}>{item.name}</Text>
+                    </VStack>
+                    <Text fontWeight="$semibold" fontSize="$lg" color={colors.primary} mx="$3">{item.symbol}</Text>
+                    {settings.currency === item.code && (
+                      <Icon name="check" size={24} color={colors.primary} />
+                    )}
+                  </HStack>
+                </Pressable>
               )}
               keyExtractor={(item) => item.code}
               scrollEnabled={true}
             />
-          </View>
-        </View>
+          </Box>
+        </Box>
       </Modal>
     </ScrollView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    padding: 20,
-    paddingTop: 40,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#64748b',
-  },
-  card: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    backgroundColor: '#ffffff',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 16,
-  },
-  settingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  settingInfo: {
-    flex: 1,
-    marginRight: 16,
-  },
-  settingLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  settingValue: {
-    fontSize: 16,
-    color: '#6366f1',
-    fontWeight: '600',
-  },
-  settingDescription: {
-    fontSize: 14,
-    color: '#64748b',
-  },
-  editButton: {
-    borderColor: '#6366f1',
-  },
-  budgetEditor: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-  },
-  budgetInput: {
-    marginBottom: 12,
-  },
-  budgetButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  saveButton: {
-    backgroundColor: '#6366f1',
-  },
-  divider: {
-    marginVertical: 16,
-  },
-  actionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  actionInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  actionText: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  actionLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  actionDescription: {
-    fontSize: 14,
-    color: '#64748b',
-  },
-  aboutItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  aboutLabel: {
-    fontSize: 16,
-    color: '#64748b',
-  },
-  aboutValue: {
-    fontSize: 16,
-    color: '#1e293b',
-    fontWeight: '500',
-  },
-  bottomPadding: {
-    height: 20,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#ffffff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '80%',
-    paddingTop: 16,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1e293b',
-  },
-  currencyOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  currencyOptionSelected: {
-    backgroundColor: '#f0f4ff',
-  },
-  currencyOptionContent: {
-    flex: 1,
-  },
-  currencyCode: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  currencyName: {
-    fontSize: 14,
-    color: '#64748b',
-  },
-  currencySymbol: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#6366f1',
-    marginHorizontal: 12,
-  },
-});
 
 export default SettingsScreen;

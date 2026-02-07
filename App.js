@@ -1,15 +1,18 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { Provider as PaperProvider } from 'react-native-paper';
+import { GluestackUIProvider } from '@gluestack-ui/themed';
 import AppNavigator from './src/navigation/AppNavigator';
-import { theme } from './src/styles/theme';
+import { theme, gluestackThemeConfig } from './src/styles/theme';
 
 export default function App() {
   return (
-    <PaperProvider theme={theme}>
-      <NavigationContainer>
-        <AppNavigator />
-      </NavigationContainer>
-    </PaperProvider>
+    <GluestackUIProvider config={gluestackThemeConfig}>
+      <PaperProvider theme={theme}>
+        <NavigationContainer>
+          <AppNavigator />
+        </NavigationContainer>
+      </PaperProvider>
+    </GluestackUIProvider>
   );
 }
