@@ -19,11 +19,15 @@ import {
 import Icon from '@expo/vector-icons/MaterialIcons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
-const AddExpenseModal = ({ onClose, onSave, categories }) => {
-  const [vendor, setVendor] = useState('');
-  const [amount, setAmount] = useState('');
+const AddExpenseModal = ({ onClose, onSave, categories, initialData }) => {
+  const [vendor, setVendor] = useState(initialData?.vendor || '');
+  const [amount, setAmount] = useState(
+    initialData?.amount ? String(initialData.amount) : ''
+  );
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [date, setDate] = useState(new Date());
+  const [date, setDate] = useState(
+    initialData?.date ? new Date(initialData.date + 'T00:00:00') : new Date()
+  );
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [errors, setErrors] = useState({});
 

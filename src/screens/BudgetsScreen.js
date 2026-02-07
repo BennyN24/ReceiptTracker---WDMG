@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
+  RefreshControl,
 } from 'react-native';
 import {
   Card,
@@ -27,6 +28,7 @@ const BudgetsScreen = ({ navigation }) => {
   const [settings, setSettings] = useState({ currency: 'USD' });
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [newBudget, setNewBudget] = useState({
     name: '',
     amount: '',
@@ -53,6 +55,12 @@ const BudgetsScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
   };
 
   const getCurrentPeriodExpenses = useMemo(() => {
@@ -242,7 +250,13 @@ const BudgetsScreen = ({ navigation }) => {
       </View>
 
       {/* Budgets List */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6366f1']} tintColor="#6366f1" />
+        }
+      >
         {budgets.length === 0 ? (
           renderEmptyState()
         ) : (

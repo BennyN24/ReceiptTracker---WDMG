@@ -4,6 +4,7 @@ import {
   ScrollView,
   StyleSheet,
   Dimensions,
+  RefreshControl,
 } from 'react-native';
 import {
   Card,
@@ -27,6 +28,7 @@ const AnalyticsScreen = () => {
   const [topVendors, setTopVendors] = useState([]);
   const [insights, setInsights] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadAnalytics();
@@ -79,6 +81,12 @@ const AnalyticsScreen = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadAnalytics();
+    setRefreshing(false);
   };
 
   const getDateRange = (periodType) => {
@@ -147,7 +155,12 @@ const AnalyticsScreen = () => {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6366f1']} tintColor="#6366f1" />
+      }
+    >
       <View style={styles.header}>
         <Text variant="headlineSmall" style={styles.title}>
           Analytics

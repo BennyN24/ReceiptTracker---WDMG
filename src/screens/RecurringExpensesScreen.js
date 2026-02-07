@@ -6,6 +6,7 @@ import {
   FlatList,
   Alert,
   Modal,
+  RefreshControl,
 } from 'react-native';
 import {
   Button,
@@ -26,6 +27,7 @@ const RecurringExpensesScreen = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [formData, setFormData] = useState({
     vendor: '',
@@ -68,6 +70,12 @@ const RecurringExpensesScreen = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadRecurringExpenses();
+    setRefreshing(false);
   };
 
   const handleAddExpense = async () => {
@@ -217,7 +225,12 @@ const RecurringExpensesScreen = () => {
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView}>
+      <ScrollView
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6366f1']} tintColor="#6366f1" />
+        }
+      >
         {loading ? (
           <View style={styles.centerContainer}>
             <Text>Loading recurring expenses...</Text>

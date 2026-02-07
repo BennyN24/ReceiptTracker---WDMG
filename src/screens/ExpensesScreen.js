@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import {
   Card,
@@ -27,6 +28,7 @@ const ExpensesScreen = ({ navigation }) => {
   const [sortBy, setSortBy] = useState('newest');
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [settings, setSettings] = useState({ currency: 'USD' });
 
   useEffect(() => {
@@ -89,6 +91,11 @@ const ExpensesScreen = ({ navigation }) => {
     }
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
 
   const handleAddExpense = async (expenseData) => {
     try {
@@ -287,6 +294,9 @@ const ExpensesScreen = ({ navigation }) => {
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={renderEmptyState}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6366f1']} tintColor="#6366f1" />
+        }
       />
 
       {/* Floating Action Button */}
