@@ -14,3 +14,6 @@ This is the main rule for the ReceiptTracker project. It should be applied to al
 8. Test thoroughly before committing
 9. Follow the project's architecture and design patterns
 10. Maintain consistency with existing codebase
+11. Use the latest stable versions of dependencies
+12. Follow the project's coding standards
+13. Follow Documentation standards Create Folder for New Features and Bug fixes on /docs

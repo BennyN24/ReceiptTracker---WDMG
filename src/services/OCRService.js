@@ -80,29 +80,72 @@ const OCRService = {
    * Parse extracted text to find vendor, amount, and date
    */
   parseReceiptText(text) {
-    if (!text) return null;
+    if (!text || typeof text !== 'string') return null;
 
     const result = {
       vendor: this._extractVendor(text),
       amount: this._extractAmount(text),
       date: this._extractDate(text),
+      confidence: 0,
     };
 
+    result.confidence = this._calculateConfidence(result);
     return result.vendor || result.amount ? result : null;
+  },
+
+  /**
+   * Calculate confidence score for extracted data (0-1)
+   */
+  _calculateConfidence(data) {
+    if (!data) return 0;
+
+    let score = 0;
+    let factors = 0;
+
+    if (data.vendor && data.vendor.trim().length > 0) {
+      score += 0.4;
+      factors++;
+    }
+
+    if (data.amount && data.amount > 0) {
+      score += 0.4;
+      factors++;
+    }
+
+    if (data.date && this._isValidDate(data.date)) {
+      score += 0.2;
+      factors++;
+    }
+
+    return factors > 0 ? Math.min(score, 1) : 0;
   },
 
   /**
    * Extract vendor name from text
    */
   _extractVendor(text) {
-    // Look for common vendor patterns
-    const lines = text.split('\n').filter(l => l.trim());
+    if (!text || typeof text !== 'string') return null;
+
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     
-    // Usually first non-empty line is vendor
-    if (lines.length > 0) {
-      const firstLine = lines[0].trim();
-      if (firstLine.length > 2 && firstLine.length < 50) {
-        return firstLine;
+    if (lines.length === 0) return null;
+
+    // Filter out common non-vendor lines
+    const nonVendorPatterns = [
+      /^(receipt|invoice|bill|statement|order|confirmation)/i,
+      /^(date|time|total|amount|subtotal|tax|tip|balance)/i,
+      /^(thank you|thank|welcome|please|visit|call)/i,
+      /^\d+[-/]\d+[-/]\d+/,
+      /^\$?\d+[.,]\d{2}$/,
+      /^[0-9]{10,}$/,
+    ];
+
+    for (const line of lines) {
+      if (line.length > 2 && line.length < 60) {
+        const isNonVendor = nonVendorPatterns.some(pattern => pattern.test(line));
+        if (!isNonVendor) {
+          return line;
+        }
       }
     }
 
@@ -153,29 +196,63 @@ const OCRService = {
    * Extract date from text
    */
   _extractDate(text) {
-    // Match common date patterns
+    if (!text || typeof text !== 'string') {
+      return new Date().toISOString().split('T')[0];
+    }
+
+    const normalizedText = text.toUpperCase();
+    
+    // Match common date patterns with priority
     const patterns = [
-      /(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/,  // MM/DD/YYYY or DD/MM/YYYY
-      /(\d{4})[/-](\d{1,2})[/-](\d{1,2})/,    // YYYY/MM/DD
+      { regex: /DATE\s*[:\s]*(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/i, groups: [1, 2, 3] },
+      { regex: /(\d{4})[/-](\d{1,2})[/-](\d{1,2})/, groups: [1, 2, 3], isYearFirst: true },
+      { regex: /(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/, groups: [1, 2, 3] },
+      { regex: /(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\s+(\d{1,2})[,\s]+(\d{4})/i, groups: [1, 2, 3], isMonthName: true },
+      { regex: /(\d{1,2})\s+(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\s+(\d{4})/i, groups: [1, 2, 3], isMonthName: true },
     ];
 
-    for (const pattern of patterns) {
-      const match = text.match(pattern);
+    const monthMap = {
+      'JAN': 1, 'FEB': 2, 'MAR': 3, 'APR': 4, 'MAY': 5, 'JUN': 6,
+      'JUL': 7, 'AUG': 8, 'SEP': 9, 'OCT': 10, 'NOV': 11, 'DEC': 12,
+    };
+
+    for (const patternObj of patterns) {
+      const match = normalizedText.match(patternObj.regex);
       if (match) {
         try {
-          let year = match[3];
-          let month = match[1];
-          let day = match[2];
+          let year, month, day;
+
+          if (patternObj.isYearFirst) {
+            year = match[1];
+            month = match[2];
+            day = match[3];
+          } else if (patternObj.isMonthName) {
+            const monthStr = match[2].substring(0, 3).toUpperCase();
+            month = monthMap[monthStr] || parseInt(match[2]);
+            day = match[1];
+            year = match[3];
+          } else {
+            month = match[1];
+            day = match[2];
+            year = match[3];
+          }
 
           // Handle 2-digit year
           if (year.length === 2) {
-            year = parseInt(year) < 50 ? '20' + year : '19' + year;
+            const yearNum = parseInt(year);
+            year = yearNum < 50 ? '20' + year : '19' + year;
           }
 
-          // Try to parse as date
-          const date = new Date(year, month - 1, day);
-          if (!isNaN(date.getTime())) {
-            return date.toISOString().split('T')[0];
+          // Validate date
+          const monthNum = parseInt(month);
+          const dayNum = parseInt(day);
+          const yearNum = parseInt(year);
+
+          if (monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31 && yearNum >= 1900 && yearNum <= 2100) {
+            const date = new Date(yearNum, monthNum - 1, dayNum);
+            if (!isNaN(date.getTime()) && date.getMonth() === monthNum - 1) {
+              return date.toISOString().split('T')[0];
+            }
           }
         } catch (e) {
           continue;
@@ -184,6 +261,23 @@ const OCRService = {
     }
 
     return new Date().toISOString().split('T')[0];
+  },
+
+  /**
+   * Detect receipt type for better parsing
+   */
+  _detectReceiptType(text) {
+    if (!text || typeof text !== 'string') return 'unknown';
+
+    const upperText = text.toUpperCase();
+    
+    if (upperText.includes('INVOICE')) return 'invoice';
+    if (upperText.includes('RECEIPT') || upperText.includes('TILL')) return 'receipt';
+    if (upperText.includes('BILL') || upperText.includes('STATEMENT')) return 'bill';
+    if (upperText.includes('ORDER') || upperText.includes('CONFIRMATION')) return 'order';
+    if (upperText.includes('TICKET')) return 'ticket';
+    
+    return 'unknown';
   },
 
   /**
@@ -197,6 +291,52 @@ const OCRService = {
     const hasDate = data.date && this._isValidDate(data.date);
 
     return hasVendor && hasAmount && hasDate;
+  },
+
+  /**
+   * Get extraction quality assessment
+   */
+  getExtractionQuality(data) {
+    if (!data) return { status: 'failed', message: 'No data extracted' };
+
+    const issues = [];
+
+    if (!data.vendor || data.vendor.trim().length === 0) {
+      issues.push('Vendor name not found');
+    }
+
+    if (!data.amount || data.amount <= 0) {
+      issues.push('Amount not found or invalid');
+    }
+
+    if (!data.date || !this._isValidDate(data.date)) {
+      issues.push('Date not found or invalid');
+    }
+
+    const confidence = data.confidence || 0;
+
+    if (issues.length === 0) {
+      return {
+        status: 'success',
+        message: 'All data extracted successfully',
+        confidence: confidence,
+        issues: [],
+      };
+    } else if (issues.length === 1) {
+      return {
+        status: 'partial',
+        message: 'Partial extraction - some fields missing',
+        confidence: confidence,
+        issues: issues,
+      };
+    } else {
+      return {
+        status: 'warning',
+        message: 'Multiple fields missing - manual review recommended',
+        confidence: confidence,
+        issues: issues,
+      };
+    }
   },
 
   /**
