@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Alert,
   Switch,
+  Modal,
+  FlatList,
 } from 'react-native';
 import {
   Card,
@@ -17,12 +19,15 @@ import {
 } from 'react-native-paper';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import { StorageService } from '../services/StorageService';
+import CurrencyService from '../services/CurrencyService';
 
 const SettingsScreen = ({ navigation }) => {
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
   const [editingBudget, setEditingBudget] = useState(false);
   const [tempBudget, setTempBudget] = useState('');
+  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
+  const [currencies, setCurrencies] = useState([]);
 
   useEffect(() => {
     loadSettings();
@@ -33,6 +38,8 @@ const SettingsScreen = ({ navigation }) => {
       const settingsData = await StorageService.getSettings();
       setSettings(settingsData);
       setTempBudget(settingsData.monthlyBudget?.toString() || '1550');
+      const currencyList = CurrencyService.getAllCurrencies();
+      setCurrencies(currencyList);
     } catch (error) {
       Alert.alert('Error', 'Failed to load settings');
     } finally {
@@ -61,6 +68,16 @@ const SettingsScreen = ({ navigation }) => {
     await updateSetting('monthlyBudget', budgetAmount);
     setEditingBudget(false);
     Alert.alert('Success', 'Monthly budget updated successfully');
+  };
+
+  const handleCurrencyChange = async (currencyCode) => {
+    try {
+      await updateSetting('currency', currencyCode);
+      setShowCurrencyModal(false);
+      Alert.alert('Success', `Currency changed to ${currencyCode}`);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to change currency');
+    }
   };
 
   const handleExportData = async () => {
@@ -113,10 +130,10 @@ const SettingsScreen = ({ navigation }) => {
     );
   };
 
-  const formatCurrency = (amount, currency = 'USD') => {
+  const formatCurrency = (amount, currency = null) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: currency,
+      currency: currency || settings.currency || 'USD',
     }).format(amount);
   };
 
@@ -204,6 +221,24 @@ const SettingsScreen = ({ navigation }) => {
       <Card style={styles.card}>
         <Card.Content>
           <Text style={styles.sectionTitle}>App Preferences</Text>
+          
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Preferred Currency</Text>
+              <Text style={styles.settingValue}>
+                {settings.currency || 'USD'} ({CurrencyService.getSymbol(settings.currency || 'USD')})
+              </Text>
+            </View>
+            <Button
+              mode="outlined"
+              onPress={() => setShowCurrencyModal(true)}
+              style={styles.editButton}
+            >
+              Change
+            </Button>
+          </View>
+
+          <Divider style={styles.divider} />
           
           <View style={styles.settingItem}>
             <View style={styles.settingInfo}>
@@ -300,6 +335,49 @@ const SettingsScreen = ({ navigation }) => {
       </Card>
 
       <View style={styles.bottomPadding} />
+
+      {/* Currency Selection Modal */}
+      <Modal
+        visible={showCurrencyModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowCurrencyModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Currency</Text>
+              <TouchableOpacity onPress={() => setShowCurrencyModal(false)}>
+                <Icon name="close" size={24} color="#1e293b" />
+              </TouchableOpacity>
+            </View>
+            
+            <FlatList
+              data={currencies}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.currencyOption,
+                    settings.currency === item.code && styles.currencyOptionSelected,
+                  ]}
+                  onPress={() => handleCurrencyChange(item.code)}
+                >
+                  <View style={styles.currencyOptionContent}>
+                    <Text style={styles.currencyCode}>{item.code}</Text>
+                    <Text style={styles.currencyName}>{item.name}</Text>
+                  </View>
+                  <Text style={styles.currencySymbol}>{item.symbol}</Text>
+                  {settings.currency === item.code && (
+                    <Icon name="check" size={24} color="#6366f1" />
+                  )}
+                </TouchableOpacity>
+              )}
+              keyExtractor={(item) => item.code}
+              scrollEnabled={true}
+            />
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -431,6 +509,63 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 20,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    paddingTop: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  currencyOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  currencyOptionSelected: {
+    backgroundColor: '#f0f4ff',
+  },
+  currencyOptionContent: {
+    flex: 1,
+  },
+  currencyCode: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 4,
+  },
+  currencyName: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  currencySymbol: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6366f1',
+    marginHorizontal: 12,
   },
 });
 

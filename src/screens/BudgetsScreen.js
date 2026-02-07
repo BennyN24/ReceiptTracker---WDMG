@@ -24,6 +24,7 @@ import { StorageService } from '../services/StorageService';
 const BudgetsScreen = ({ navigation }) => {
   const [budgets, setBudgets] = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [settings, setSettings] = useState({ currency: 'USD' });
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [newBudget, setNewBudget] = useState({
@@ -38,13 +39,15 @@ const BudgetsScreen = ({ navigation }) => {
 
   const loadData = async () => {
     try {
-      const [budgetsData, expensesData] = await Promise.all([
+      const [budgetsData, expensesData, settingsData] = await Promise.all([
         StorageService.getBudgets(),
         StorageService.getExpenses(),
+        StorageService.getSettings(),
       ]);
       
       setBudgets(budgetsData);
       setExpenses(expensesData);
+      setSettings(settingsData);
     } catch (error) {
       Alert.alert('Error', 'Failed to load data');
     } finally {
@@ -138,10 +141,10 @@ const BudgetsScreen = ({ navigation }) => {
     );
   };
 
-  const formatCurrency = (amount, currency = 'USD') => {
+  const formatCurrency = (amount, currency = null) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: currency,
+      currency: currency || settings.currency || 'USD',
     }).format(amount);
   };
 

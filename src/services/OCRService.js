@@ -113,18 +113,33 @@ const OCRService = {
    * Extract amount from text
    */
   _extractAmount(text) {
+    if (!text || typeof text !== 'string') return null;
+
+    const normalizedText = text.toUpperCase().trim();
+    
     // Match currency patterns: $123.45, 123.45, etc.
     const patterns = [
-      /\$\s*(\d+\.?\d*)/,           // $123.45
-      /USD\s*(\d+\.?\d*)/i,         // USD 123.45
-      /Total\s*[:\s]*\$?(\d+\.?\d*)/i, // Total: 123.45
-      /Amount\s*[:\s]*\$?(\d+\.?\d*)/i, // Amount: 123.45
+      /\$\s*(\d+[.,]\d{2})/,                    // $123.45 or $123,45
+      /\$\s*(\d+)/,                             // $123
+      /USD\s*[:\s]*(\d+[.,]\d{2})/i,           // USD: 123.45
+      /USD\s*[:\s]*(\d+)/i,                     // USD: 123
+      /TOTAL\s*[:\s]*\$?(\d+[.,]\d{2})/i,      // Total: 123.45
+      /TOTAL\s*[:\s]*\$?(\d+)/i,               // Total: 123
+      /AMOUNT\s*[:\s]*\$?(\d+[.,]\d{2})/i,     // Amount: 123.45
+      /AMOUNT\s*[:\s]*\$?(\d+)/i,              // Amount: 123
+      /SUBTOTAL\s*[:\s]*\$?(\d+[.,]\d{2})/i,   // Subtotal: 123.45
+      /SUBTOTAL\s*[:\s]*\$?(\d+)/i,            // Subtotal: 123
+      /GRAND\s*TOTAL\s*[:\s]*\$?(\d+[.,]\d{2})/i, // Grand Total: 123.45
+      /GRAND\s*TOTAL\s*[:\s]*\$?(\d+)/i,       // Grand Total: 123
+      /(?:DUE|BALANCE|PAYABLE)\s*[:\s]*\$?(\d+[.,]\d{2})/i, // Due/Balance: 123.45
+      /(?:DUE|BALANCE|PAYABLE)\s*[:\s]*\$?(\d+)/i, // Due/Balance: 123
     ];
 
     for (const pattern of patterns) {
-      const match = text.match(pattern);
+      const match = normalizedText.match(pattern);
       if (match && match[1]) {
-        const amount = parseFloat(match[1]);
+        let amountStr = match[1].replace(/,/g, '.');
+        const amount = parseFloat(amountStr);
         if (amount > 0 && amount < 1000000) {
           return amount;
         }

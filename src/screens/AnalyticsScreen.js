@@ -13,12 +13,14 @@ import {
 } from 'react-native-paper';
 import StorageService from '../services/StorageService';
 import AnalyticsService from '../services/AnalyticsService';
+import CurrencyService from '../services/CurrencyService';
 
 const { width } = Dimensions.get('window');
 
 const AnalyticsScreen = () => {
   const [expenses, setExpenses] = useState([]);
   const [budgets, setBudgets] = useState([]);
+  const [settings, setSettings] = useState({ currency: 'USD' });
   const [period, setPeriod] = useState('month');
   const [stats, setStats] = useState(null);
   const [byCategory, setByCategory] = useState([]);
@@ -35,9 +37,11 @@ const AnalyticsScreen = () => {
       setLoading(true);
       const expensesData = await StorageService.getExpenses();
       const budgetsData = await StorageService.getBudgets();
+      const settingsData = await StorageService.getSettings();
 
       setExpenses(expensesData);
       setBudgets(budgetsData);
+      setSettings(settingsData);
 
       const { startDate, endDate } = getDateRange(period);
 
@@ -114,6 +118,13 @@ const AnalyticsScreen = () => {
     return { startDate, endDate };
   };
 
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: settings.currency || 'USD',
+    }).format(amount);
+  };
+
   const renderStatCard = (label, value, color = '#6366f1') => (
     <Card style={[styles.statCard, { borderLeftColor: color, borderLeftWidth: 4 }]}>
       <Card.Content>
@@ -121,7 +132,7 @@ const AnalyticsScreen = () => {
           {label}
         </Text>
         <Text variant="headlineSmall" style={[styles.statValue, { color }]}>
-          ${typeof value === 'number' ? value.toFixed(2) : '0.00'}
+          {formatCurrency(typeof value === 'number' ? value : 0)}
         </Text>
       </Card.Content>
     </Card>
@@ -205,7 +216,7 @@ const AnalyticsScreen = () => {
                     </View>
                   </View>
                   <Text variant="bodyMedium" style={styles.categoryAmount}>
-                    ${item.amount.toFixed(2)}
+                    {formatCurrency(item.amount)}
                   </Text>
                 </View>
               </Card.Content>
@@ -228,11 +239,11 @@ const AnalyticsScreen = () => {
                       {vendor.vendor}
                     </Text>
                     <Text variant="bodySmall" style={styles.vendorMeta}>
-                      {vendor.count} transactions • Avg: ${vendor.average.toFixed(2)}
+                      {vendor.count} transactions • Avg: {formatCurrency(vendor.average)}
                     </Text>
                   </View>
                   <Text variant="bodyMedium" style={styles.vendorAmount}>
-                    ${vendor.amount.toFixed(2)}
+                    {formatCurrency(vendor.amount)}
                   </Text>
                 </View>
               </Card.Content>

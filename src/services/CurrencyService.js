@@ -16,6 +16,7 @@ const CurrencyService = {
     NZD: { symbol: 'NZ$', name: 'New Zealand Dollar', code: 'NZD', rate: 1.65 },
     ZAR: { symbol: 'R', name: 'South African Rand', code: 'ZAR', rate: 18.50 },
     BRL: { symbol: 'R$', name: 'Brazilian Real', code: 'BRL', rate: 4.97 },
+    PHP: { symbol: '₱', name: 'Philippine Peso', code: 'PHP', rate: 56.75 },
   },
 
   /**

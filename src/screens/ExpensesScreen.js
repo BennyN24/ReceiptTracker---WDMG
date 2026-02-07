@@ -27,6 +27,7 @@ const ExpensesScreen = ({ navigation }) => {
   const [sortBy, setSortBy] = useState('newest');
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState({ currency: 'USD' });
 
   useEffect(() => {
     loadData();
@@ -72,13 +73,15 @@ const ExpensesScreen = ({ navigation }) => {
 
   const loadData = async () => {
     try {
-      const [expensesData, categoriesData] = await Promise.all([
+      const [expensesData, categoriesData, settingsData] = await Promise.all([
         StorageService.getExpenses(),
         StorageService.getCategories(),
+        StorageService.getSettings(),
       ]);
       
       setExpenses(expensesData);
       setCategories(categoriesData);
+      setSettings(settingsData);
     } catch (error) {
       Alert.alert('Error', 'Failed to load expenses');
     } finally {
@@ -125,10 +128,10 @@ const ExpensesScreen = ({ navigation }) => {
     setSortBy('newest');
   };
 
-  const formatCurrency = (amount, currency = settings.currency || 'USD') => {
+  const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: currency,
+      currency: settings.currency || 'USD',
     }).format(amount);
   };
 

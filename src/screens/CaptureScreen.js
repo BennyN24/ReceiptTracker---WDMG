@@ -66,7 +66,7 @@ const CaptureScreen = ({ navigation }) => {
   const pickImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: [ImagePicker.MediaType.image],
         allowsEditing: true,
         quality: 0.8,
         base64: false,
@@ -153,36 +153,36 @@ const CaptureScreen = ({ navigation }) => {
             style={styles.camera}
             facing={facing}
             ref={cameraRef}
-          >
-            <View style={styles.cameraOverlay}>
-              <View style={styles.topControls}>
-                <TouchableOpacity
-                  style={styles.flipButton}
-                  onPress={toggleCameraType}
-                >
-                  <Icon name="flip-camera-android" size={24} color="#ffffff" />
-                </TouchableOpacity>
-              </View>
+          />
 
-              <View style={styles.bottomControls}>
-                <TouchableOpacity
-                  style={styles.galleryButton}
-                  onPress={pickImage}
-                >
-                  <Icon name="photo-library" size={32} color="#ffffff" />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.captureButton}
-                  onPress={takePicture}
-                >
-                  <View style={styles.captureButtonInner} />
-                </TouchableOpacity>
-
-                <View style={styles.placeholderButton} />
-              </View>
+          <View style={styles.cameraOverlay}>
+            <View style={styles.topControls}>
+              <TouchableOpacity
+                style={styles.flipButton}
+                onPress={toggleCameraType}
+              >
+                <Icon name="flip-camera-android" size={24} color="#ffffff" />
+              </TouchableOpacity>
             </View>
-          </CameraView>
+
+            <View style={styles.bottomControls}>
+              <TouchableOpacity
+                style={styles.galleryButton}
+                onPress={pickImage}
+              >
+                <Icon name="photo-library" size={32} color="#ffffff" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.captureButton}
+                onPress={takePicture}
+              >
+                <View style={styles.captureButtonInner} />
+              </TouchableOpacity>
+
+              <View style={styles.placeholderButton} />
+            </View>
+          </View>
 
           <View style={styles.instructions}>
             <Text style={styles.instructionText}>Tap to Take Photo</Text>
@@ -291,7 +291,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cameraOverlay: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'transparent',
     justifyContent: 'space-between',
   },
