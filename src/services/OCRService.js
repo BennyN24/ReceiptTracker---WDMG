@@ -1,4 +1,5 @@
 import * as FileSystem from 'expo-file-system';
+import GoogleCloudVisionConfig from './GoogleCloudVisionConfig';
 
 const OCRService = {
   /**
@@ -22,27 +23,65 @@ const OCRService = {
   },
 
   /**
-   * Attempt cloud-based OCR extraction
-   * Placeholder for integration with Google Cloud Vision, AWS Textract, etc.
+   * Attempt cloud-based OCR extraction using Google Cloud Vision API
    */
   async _tryCloudOCR(imageUri) {
     try {
-      // This is a placeholder for cloud OCR integration
-      // To use: Set up Google Cloud Vision or similar service
-      // const response = await fetch('https://vision.googleapis.com/v1/images:annotate', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     requests: [{
-      //       image: { content: base64Image },
-      //       features: [{ type: 'TEXT_DETECTION' }]
-      //     }]
-      //   })
-      // });
-      
-      return null; // Not implemented yet
+      if (!GoogleCloudVisionConfig.isConfigured()) {
+        console.warn('Google Cloud Vision API not configured');
+        return null;
+      }
+
+      // Read image file as base64
+      const imageData = await FileSystem.readAsStringAsync(imageUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Build request for Google Cloud Vision API
+      const requestBody = GoogleCloudVisionConfig.buildRequest(imageData);
+      const url = GoogleCloudVisionConfig.getUrl();
+
+      // Call Google Cloud Vision API
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: GoogleCloudVisionConfig.getHeaders(),
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        console.warn(`Google Cloud Vision API error: ${response.status} ${response.statusText}`);
+        return null;
+      }
+
+      const result = await response.json();
+
+      // Check for API errors
+      if (result.error) {
+        console.warn('Google Cloud Vision API error:', result.error.message);
+        return null;
+      }
+
+      // Extract text from response
+      if (result.responses && result.responses.length > 0) {
+        const textAnnotations = result.responses[0].textAnnotations;
+        if (textAnnotations && textAnnotations.length > 0) {
+          const fullText = textAnnotations[0].description;
+          const receiptType = this._detectReceiptType(fullText);
+          const parsedData = this.parseReceiptText(fullText);
+          
+          if (parsedData) {
+            return {
+              ...parsedData,
+              receiptType,
+              source: 'google_cloud_vision',
+            };
+          }
+        }
+      }
+
+      return null;
     } catch (error) {
-      console.warn('Cloud OCR unavailable:', error);
+      console.warn('Google Cloud Vision API error:', error.message);
       return null;
     }
   },
