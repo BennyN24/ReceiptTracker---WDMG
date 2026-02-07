@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import {
   Card,
@@ -22,6 +23,7 @@ const DashboardScreen = ({ navigation }) => {
   const [budgets, setBudgets] = useState([]);
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -43,6 +45,12 @@ const DashboardScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
   };
 
   const getCurrentMonthExpenses = useMemo(() => {
@@ -102,7 +110,13 @@ const DashboardScreen = ({ navigation }) => {
   const recentExpenses = getRecentExpenses;
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6366f1']} tintColor="#6366f1" />
+      }
+    >
       <View style={styles.header}>
         <Text style={styles.title}>Where Did my Money Go!</Text>
         <Text style={styles.subtitle}>Welcome back, your finances are on track.</Text>

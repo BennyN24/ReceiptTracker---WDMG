@@ -5,6 +5,7 @@ import {
   StyleSheet,
   FlatList,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import {
   Card,
@@ -21,6 +22,7 @@ const CurrencySettingsScreen = () => {
   const [selectedCurrency, setSelectedCurrency] = useState('USD');
   const [currencies, setCurrencies] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadCurrencySettings();
@@ -41,6 +43,12 @@ const CurrencySettingsScreen = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadCurrencySettings();
+    setRefreshing(false);
   };
 
   const handleCurrencyChange = async (currencyCode) => {
@@ -88,7 +96,12 @@ const CurrencySettingsScreen = () => {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6366f1']} tintColor="#6366f1" />
+      }
+    >
       <View style={styles.header}>
         <Text variant="headlineSmall" style={styles.title}>
           Currency Settings

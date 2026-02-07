@@ -6,12 +6,10 @@ import {
   TouchableOpacity,
   Alert,
   Image,
-  Modal,
 } from 'react-native';
 import {
   Button,
   Card,
-  Portal,
   Appbar,
   ActivityIndicator,
 } from 'react-native-paper';
@@ -20,6 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import AddExpenseModal from '../components/AddExpenseModal';
 import { StorageService } from '../services/StorageService';
+import OCRService from '../services/OCRService';
 
 const CaptureScreen = ({ navigation }) => {
   const [facing, setFacing] = useState('back');
@@ -28,6 +27,7 @@ const CaptureScreen = ({ navigation }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [ocrData, setOcrData] = useState(null);
   const cameraRef = useRef();
 
   React.useEffect(() => {
@@ -84,13 +84,40 @@ const CaptureScreen = ({ navigation }) => {
     setCapturedImage(null);
   };
 
-  const processImage = () => {
+  const processImage = async () => {
     setIsProcessing(true);
-    // Simulate OCR processing
-    setTimeout(() => {
+    setOcrData(null);
+    try {
+      const result = await OCRService.extractReceiptData(capturedImage.uri);
+      if (result) {
+        setOcrData(result);
+        const quality = OCRService.getExtractionQuality(result);
+        if (quality.status === 'warning') {
+          Alert.alert(
+            'Partial Extraction',
+            'Some fields could not be extracted. Please review and fill in missing details.',
+            [{ text: 'OK', onPress: () => setShowAddModal(true) }]
+          );
+        } else {
+          setShowAddModal(true);
+        }
+      } else {
+        Alert.alert(
+          'Could Not Read Receipt',
+          'Unable to extract data from this image. You can still add the expense manually.',
+          [{ text: 'Add Manually', onPress: () => setShowAddModal(true) }]
+        );
+      }
+    } catch (error) {
+      console.error('OCR processing error:', error);
+      Alert.alert(
+        'Processing Error',
+        'An error occurred while processing the receipt. You can still add the expense manually.',
+        [{ text: 'Add Manually', onPress: () => setShowAddModal(true) }]
+      );
+    } finally {
       setIsProcessing(false);
-      setShowAddModal(true);
-    }, 2000);
+    }
   };
 
   const handleSaveExpense = async (expenseData) => {
@@ -215,20 +242,34 @@ const CaptureScreen = ({ navigation }) => {
                       Extracting text and analyzing data
                     </Text>
                   </View>
-                ) : (
+                ) : ocrData ? (
                   <View style={styles.processedContainer}>
                     <Icon name="check-circle" size={48} color="#10b981" />
                     <Text style={styles.processedText}>Receipt processed!</Text>
-                    <Text style={styles.processedSubtext}>
-                      Ready to add expense details
-                    </Text>
+                    {ocrData.vendor && (
+                      <Text style={styles.ocrResultText}>Vendor: {ocrData.vendor}</Text>
+                    )}
+                    {ocrData.amount && (
+                      <Text style={styles.ocrResultText}>Amount: ${ocrData.amount.toFixed(2)}</Text>
+                    )}
+                    {ocrData.date && (
+                      <Text style={styles.ocrResultText}>Date: {ocrData.date}</Text>
+                    )}
                     <Button
                       mode="contained"
                       onPress={() => setShowAddModal(true)}
                       style={styles.addExpenseButton}
                     >
-                      Add Expense Details
+                      Confirm & Add Expense
                     </Button>
+                  </View>
+                ) : (
+                  <View style={styles.processedContainer}>
+                    <Icon name="document-scanner" size={48} color="#6366f1" />
+                    <Text style={styles.processedText}>Ready to scan</Text>
+                    <Text style={styles.processedSubtext}>
+                      Tap the checkmark above to process this receipt
+                    </Text>
                   </View>
                 )}
               </Card.Content>
@@ -238,20 +279,17 @@ const CaptureScreen = ({ navigation }) => {
       )}
 
       {/* Add Expense Modal */}
-      <Portal>
-        <Modal
-          visible={showAddModal}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setShowAddModal(false)}
-        >
-          <AddExpenseModal
-            onClose={() => setShowAddModal(false)}
-            onSave={handleSaveExpense}
-            categories={categories}
-          />
-        </Modal>
-      </Portal>
+      {showAddModal && (
+        <AddExpenseModal
+          onClose={() => {
+            setShowAddModal(false);
+            setOcrData(null);
+          }}
+          onSave={handleSaveExpense}
+          categories={categories}
+          initialData={ocrData}
+        />
+      )}
     </View>
   );
 };
@@ -414,8 +452,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
   },
+  ocrResultText: {
+    fontSize: 15,
+    color: '#334155',
+    marginTop: 4,
+  },
   addExpenseButton: {
     backgroundColor: '#6366f1',
+    marginTop: 16,
   },
 });
 

@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Alert,
   Modal,
+  RefreshControl,
 } from 'react-native';
 import {
   Card,
@@ -26,6 +27,7 @@ const SecuritySettingsScreen = () => {
   const [passcode, setPasscode] = useState('');
   const [confirmPasscode, setConfirmPasscode] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadSecuritySettings();
@@ -46,6 +48,12 @@ const SecuritySettingsScreen = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadSecuritySettings();
+    setRefreshing(false);
   };
 
   const handleBiometricToggle = async (value) => {
@@ -164,7 +172,12 @@ const SecuritySettingsScreen = () => {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6366f1']} tintColor="#6366f1" />
+      }
+    >
       <View style={styles.header}>
         <Text variant="headlineSmall" style={styles.title}>
           Security Settings

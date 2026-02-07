@@ -9,6 +9,7 @@ import {
   Switch,
   Modal,
   FlatList,
+  RefreshControl,
 } from 'react-native';
 import {
   Card,
@@ -24,6 +25,7 @@ import CurrencyService from '../services/CurrencyService';
 const SettingsScreen = ({ navigation }) => {
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [editingBudget, setEditingBudget] = useState(false);
   const [tempBudget, setTempBudget] = useState('');
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
@@ -45,6 +47,12 @@ const SettingsScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadSettings();
+    setRefreshing(false);
   };
 
   const updateSetting = async (key, value) => {
@@ -146,7 +154,13 @@ const SettingsScreen = ({ navigation }) => {
   }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6366f1']} tintColor="#6366f1" />
+      }
+    >
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Settings</Text>
