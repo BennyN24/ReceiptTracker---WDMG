@@ -118,6 +118,22 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData }) => {
             )}
           </VStack>
 
+          {/* Description Input */}
+          <VStack mb="$6">
+            <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$2">Description</Text>
+            <Input borderRadius="$lg" borderColor={colors.border} h={100}>
+              <InputField
+                placeholder="Items or notes"
+                value={description}
+                onChangeText={setDescription}
+                fontSize="$md"
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </Input>
+          </VStack>
+
           {/* Amount Input */}
           <VStack mb="$6">
             <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$2">Amount ($)</Text>
@@ -147,22 +163,6 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData }) => {
             {errors.amount && (
               <Text fontSize="$xs" color={colors.error} mt="$1">{errors.amount}</Text>
             )}
-          </VStack>
-
-          {/* Description Input */}
-          <VStack mb="$6">
-            <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$2">Description</Text>
-            <Input borderRadius="$lg" borderColor={colors.border} h={100}>
-              <InputField
-                placeholder="Items or notes"
-                value={description}
-                onChangeText={setDescription}
-                fontSize="$md"
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            </Input>
           </VStack>
 
           {/* Category Selection */}
