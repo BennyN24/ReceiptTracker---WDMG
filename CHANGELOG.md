@@ -7,14 +7,93 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned
+### Planned (Phase 3)
 - Cloud sync and backup functionality
-- Multi-currency support
-- Advanced analytics with AI-powered insights
-- Receipt OCR for automatic data extraction
-- Export to PDF/CSV reports
+- Export to PDF reports
 - Widget support for home screen
 - Apple Watch and Wear OS companion apps
+- AI-powered spending insights (enhanced)
+- Multi-user support
+- Expense sharing & splitting
+
+## [1.1.0] - In Development (Phase 2)
+
+### Added
+- Receipt OCR for automatic data extraction
+  - Cloud OCR integration ready (Google Cloud Vision, AWS Textract)
+  - Local pattern matching fallback
+  - Automatic vendor, amount, and date extraction
+- Multi-currency support
+  - 15+ supported currencies (USD, EUR, GBP, JPY, CAD, AUD, CHF, CNY, INR, MXN, SGD, HKD, NZD, ZAR, BRL)
+  - Currency conversion and exchange rates
+  - Automatic formatting with currency symbols
+- Advanced analytics with comprehensive insights
+  - Spending by category breakdown
+  - Spending trends over time (daily, weekly, monthly)
+  - Top vendors analysis
+  - Budget vs actual comparison
+  - Month-over-month comparison
+  - Statistical analysis (mean, median, standard deviation)
+  - CSV export functionality
+  - AI-powered insights and recommendations
+- Budget alerts and notifications
+  - Budget exceeded alerts
+  - High spending warnings (75%+, 90%+)
+  - Daily budget summary notifications
+  - Weekly budget review notifications
+  - Spending spike detection
+  - Notification history tracking
+- Biometric authentication
+  - Fingerprint recognition
+  - Face recognition support
+  - Device compatibility detection
+  - Enable/disable toggle
+- Passcode lock
+  - 4+ character passcode requirement
+  - Secure storage in SecureStore
+  - SHA256 hashing
+  - Change and remove functionality
+- Dark mode full implementation
+  - Complete light and dark theme definitions
+  - All UI components themed
+  - Smooth theme transitions
+  - Persistent theme preference
+  - Optimized colors for both themes
+- Recurring expenses
+  - Daily, weekly, bi-weekly, monthly, quarterly, yearly frequencies
+  - Start and optional end dates
+  - Automatic expense creation on due dates
+  - Edit and delete functionality
+  - Next due date tracking
+  - Recurring expense total calculations
+
+### New Screens
+- RecurringExpensesScreen: Manage recurring expenses
+- AnalyticsScreen: View advanced analytics and insights
+- SecuritySettingsScreen: Configure biometric and passcode security
+- CurrencySettingsScreen: Select and manage currencies
+
+### New Services
+- OCRService: Receipt text extraction and data parsing
+- CurrencyService: Multi-currency support and conversion
+- NotificationService: Budget alerts and scheduled notifications
+- BiometricService: Biometric and passcode authentication
+- RecurringExpenseService: Recurring expense management
+- AnalyticsService: Advanced analytics and insights
+- ThemeService: Light and dark theme management
+
+### Changed
+- Enhanced Settings screen with new options
+- Improved Dashboard with analytics integration
+- Updated StorageService with recurring expense support
+- Enhanced data validation and error handling
+
+### Technical Details
+- Added expo-notifications for alert functionality
+- Integrated theme management system
+- Implemented secure passcode storage
+- Added comprehensive analytics calculations
+- Created modular service architecture for Phase 2 features
 
 ## [1.0.0] - 2026-02-07
 

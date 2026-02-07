@@ -6,7 +6,6 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
-  Modal,
 } from 'react-native';
 import {
   Card,
@@ -14,8 +13,6 @@ import {
   Searchbar,
   Chip,
   FAB,
-  Portal,
-  Divider,
 } from 'react-native-paper';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import AddExpenseModal from '../components/AddExpenseModal';
@@ -297,20 +294,13 @@ const ExpensesScreen = ({ navigation }) => {
       />
 
       {/* Add Expense Modal */}
-      <Portal>
-        <Modal
-          visible={showAddModal}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setShowAddModal(false)}
-        >
-          <AddExpenseModal
-            onClose={() => setShowAddModal(false)}
-            onSave={handleAddExpense}
-            categories={categories}
-          />
-        </Modal>
-      </Portal>
+      {showAddModal && (
+        <AddExpenseModal
+          onClose={() => setShowAddModal(false)}
+          onSave={handleAddExpense}
+          categories={categories}
+        />
+      )}
     </View>
   );
 };
