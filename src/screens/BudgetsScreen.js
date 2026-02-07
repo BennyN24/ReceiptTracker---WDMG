@@ -1,26 +1,26 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   Alert,
   Modal,
   RefreshControl,
 } from 'react-native';
 import {
-  Card,
-  Button,
-  TextInput,
-  ProgressBar,
-  FAB,
-  Portal,
-  Appbar,
+  Box,
+  Text,
+  VStack,
+  HStack,
+  Heading,
+  Pressable,
+  ScrollView,
+  Input,
+  InputField,
+  Spinner,
   Divider,
-} from 'react-native-paper';
+} from '@gluestack-ui/themed';
+import { ProgressBar, Portal } from 'react-native-paper';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import { StorageService } from '../services/StorageService';
+import { colors } from '../styles/theme';
 
 const BudgetsScreen = ({ navigation }) => {
   const [budgets, setBudgets] = useState([]);
@@ -170,91 +170,89 @@ const BudgetsScreen = ({ navigation }) => {
       const progressColor = getProgressColor(percentage);
 
       return (
-        <Card key={budget.id} style={styles.budgetCard}>
-          <Card.Content>
-            <View style={styles.budgetHeader}>
-              <View style={styles.budgetInfo}>
-                <Text style={styles.budgetName}>{budget.name}</Text>
-                <Text style={styles.budgetPeriod}>
-                  {budget.period.charAt(0).toUpperCase() + budget.period.slice(1)}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => handleDeleteBudget(budget.id)}
-                style={styles.deleteButton}
-              >
-                <Icon name="delete" size={20} color="#ef4444" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.budgetAmounts}>
-              <Text style={styles.budgetSpent}>{formatCurrency(spent)}</Text>
-              <Text style={styles.budgetTotal}>/ {formatCurrency(budget.amount)}</Text>
-            </View>
-
-            <ProgressBar
-              progress={percentage / 100}
-              color={progressColor}
-              style={styles.progressBar}
-            />
-
-            <View style={styles.budgetStats}>
-              <Text style={[styles.budgetPercentage, { color: progressColor }]}>
-                {percentage.toFixed(1)}% used
+        <Box key={budget.id} mb="$4" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
+          <HStack justifyContent="space-between" alignItems="flex-start" mb="$3">
+            <VStack flex={1}>
+              <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$1">{budget.name}</Text>
+              <Text fontSize="$sm" color={colors.textSecondary}>
+                {budget.period.charAt(0).toUpperCase() + budget.period.slice(1)}
               </Text>
-              <Text style={[
-                styles.budgetRemaining,
-                remaining < 0 && styles.overBudget
-              ]}>
-                {remaining >= 0 ? `${formatCurrency(remaining)} left` : `${formatCurrency(Math.abs(remaining))} over`}
-              </Text>
-            </View>
-          </Card.Content>
-        </Card>
+            </VStack>
+            <Pressable onPress={() => handleDeleteBudget(budget.id)} p="$1">
+              <Icon name="delete" size={20} color={colors.error} />
+            </Pressable>
+          </HStack>
+
+          <HStack alignItems="baseline" mb="$3">
+            <Text fontWeight="$bold" fontSize="$xl" color={colors.text}>{formatCurrency(spent)}</Text>
+            <Text fontSize="$md" color={colors.textSecondary}> / {formatCurrency(budget.amount)}</Text>
+          </HStack>
+
+          <ProgressBar
+            progress={percentage / 100}
+            color={progressColor}
+            style={{ height: 8, borderRadius: 4, marginBottom: 12 }}
+          />
+
+          <HStack justifyContent="space-between" alignItems="center">
+            <Text fontSize="$sm" fontWeight="$medium" color={progressColor}>
+              {percentage.toFixed(1)}% used
+            </Text>
+            <Text fontSize="$sm" fontWeight="$medium" color={remaining >= 0 ? colors.success : colors.error}>
+              {remaining >= 0 ? `${formatCurrency(remaining)} left` : `${formatCurrency(Math.abs(remaining))} over`}
+            </Text>
+          </HStack>
+        </Box>
       );
     };
   }, [getBudgetSpent, getBudgetPercentage, getProgressColor, formatCurrency, handleDeleteBudget]);
 
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <Icon name="account-balance-wallet" size={64} color="#94a3b8" />
-      <Text style={styles.emptyTitle}>No budgets yet</Text>
-      <Text style={styles.emptySubtitle}>
+    <VStack alignItems="center" justifyContent="center" py="$16" px="$8">
+      <Icon name="account-balance-wallet" size={64} color={colors.textMuted} />
+      <Text fontWeight="$semibold" fontSize="$xl" color={colors.text} mt="$4" mb="$2">No budgets yet</Text>
+      <Text fontSize="$md" color={colors.textSecondary} textAlign="center" mb="$6">
         Create your first budget to start tracking your spending
       </Text>
-      <Button
-        mode="contained"
+      <Pressable
         onPress={() => setShowAddModal(true)}
-        style={styles.addButton}
-        icon="plus"
+        bg={colors.primary}
+        borderRadius="$lg"
+        px="$6"
+        py="$3"
+        flexDirection="row"
+        alignItems="center"
       >
-        Create Your First Budget
-      </Button>
-    </View>
+        <Icon name="add" size={20} color={colors.white} />
+        <Text color={colors.white} fontWeight="$semibold" ml="$2">Create Your First Budget</Text>
+      </Pressable>
+    </VStack>
   );
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>Loading budgets...</Text>
-      </View>
+      <Box flex={1} justifyContent="center" alignItems="center" bg={colors.backgroundSecondary}>
+        <Spinner size="large" color={colors.primary} />
+        <Text mt="$3" color={colors.textSecondary}>Loading budgets...</Text>
+      </Box>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <Box flex={1} bg={colors.backgroundSecondary}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Budgets</Text>
-        <Text style={styles.subtitle}>Track your spending limits</Text>
-      </View>
+      <Box px="$5" pt="$10" pb="$4" bg={colors.white} borderBottomWidth={1} borderBottomColor={colors.border}>
+        <Heading size="2xl" color={colors.text} mb="$1">Budgets</Heading>
+        <Text color={colors.textSecondary} fontSize="$md">Track your spending limits</Text>
+      </Box>
 
       {/* Budgets List */}
       <ScrollView
-        style={styles.content}
+        flex={1}
+        p="$4"
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6366f1']} tintColor="#6366f1" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />
         }
       >
         {budgets.length === 0 ? (
@@ -263,15 +261,29 @@ const BudgetsScreen = ({ navigation }) => {
           budgets.map(renderBudgetItem)
         )}
         
-        <View style={styles.bottomPadding} />
+        <Box h={80} />
       </ScrollView>
 
       {/* Floating Action Button */}
-      <FAB
-        icon="plus"
-        style={styles.fab}
+      <Pressable
         onPress={() => setShowAddModal(true)}
-      />
+        position="absolute"
+        right="$4"
+        bottom="$4"
+        bg={colors.primary}
+        w={56}
+        h={56}
+        borderRadius="$full"
+        alignItems="center"
+        justifyContent="center"
+        shadowColor={colors.primary}
+        shadowOffset={{ width: 0, height: 4 }}
+        shadowOpacity={0.3}
+        shadowRadius={8}
+        elevation={6}
+      >
+        <Icon name="add" size={28} color={colors.white} />
+      </Pressable>
 
       {/* Add Budget Modal */}
       <Portal>
@@ -281,280 +293,106 @@ const BudgetsScreen = ({ navigation }) => {
           presentationStyle="pageSheet"
           onRequestClose={() => setShowAddModal(false)}
         >
-          <View style={styles.modalContainer}>
-            <Appbar.Header style={styles.modalHeader}>
-              <Appbar.Action icon="close" onPress={() => setShowAddModal(false)} />
-              <Appbar.Content title="Create Budget" />
-              <Appbar.Action icon="check" onPress={handleAddBudget} />
-            </Appbar.Header>
+          <Box flex={1} bg={colors.white}>
+            <HStack bg={colors.white} borderBottomWidth={1} borderBottomColor={colors.border} py="$3" px="$2" alignItems="center" justifyContent="space-between" pt="$12">
+              <Pressable onPress={() => setShowAddModal(false)} p="$2">
+                <Icon name="close" size={24} color={colors.text} />
+              </Pressable>
+              <Text fontWeight="$semibold" fontSize="$lg" color={colors.text}>Create Budget</Text>
+              <Pressable onPress={handleAddBudget} p="$2">
+                <Icon name="check" size={24} color={colors.primary} />
+              </Pressable>
+            </HStack>
 
-            <ScrollView style={styles.modalContent}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Budget Name</Text>
-                <TextInput
-                  label="e.g. Monthly Expenses"
-                  value={newBudget.name}
-                  onChangeText={(text) => setNewBudget({ ...newBudget, name: text })}
-                  mode="outlined"
-                  style={styles.input}
-                />
-              </View>
+            <ScrollView p="$4">
+              <VStack mb="$6">
+                <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$2">Budget Name</Text>
+                <Input borderRadius="$lg" borderColor={colors.border}>
+                  <InputField
+                    placeholder="e.g. Monthly Expenses"
+                    value={newBudget.name}
+                    onChangeText={(text) => setNewBudget({ ...newBudget, name: text })}
+                    fontSize="$md"
+                  />
+                </Input>
+              </VStack>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Budget Amount ($)</Text>
-                <TextInput
-                  label="0.00"
-                  value={newBudget.amount}
-                  onChangeText={(text) => {
-                    // Only allow numeric input with decimal point
-                    const numericValue = text.replace(/[^0-9.]/g, '');
-                    // Ensure only one decimal point
-                    const parts = numericValue.split('.');
-                    if (parts.length > 2) {
-                      setNewBudget({ ...newBudget, amount: parts[0] + '.' + parts[1] });
-                    } else {
-                      setNewBudget({ ...newBudget, amount: numericValue });
-                    }
-                  }}
-                  mode="outlined"
-                  keyboardType="numeric"
-                  style={styles.input}
-                />
-              </View>
+              <VStack mb="$6">
+                <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$2">Budget Amount ($)</Text>
+                <Input borderRadius="$lg" borderColor={colors.border}>
+                  <InputField
+                    placeholder="0.00"
+                    value={newBudget.amount}
+                    onChangeText={(text) => {
+                      // Only allow numeric input with decimal point
+                      const numericValue = text.replace(/[^0-9.]/g, '');
+                      // Ensure only one decimal point
+                      const parts = numericValue.split('.');
+                      if (parts.length > 2) {
+                        setNewBudget({ ...newBudget, amount: parts[0] + '.' + parts[1] });
+                      } else {
+                        setNewBudget({ ...newBudget, amount: numericValue });
+                      }
+                    }}
+                    keyboardType="numeric"
+                    fontSize="$md"
+                  />
+                </Input>
+              </VStack>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Period</Text>
-                <View style={styles.periodContainer}>
+              <VStack mb="$6">
+                <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$2">Period</Text>
+                <HStack space="sm">
                   {['weekly', 'monthly', 'yearly'].map((period) => (
-                    <TouchableOpacity
+                    <Pressable
                       key={period}
-                      style={[
-                        styles.periodChip,
-                        newBudget.period === period && styles.periodChipSelected,
-                      ]}
+                      flex={1}
+                      py="$3"
+                      px="$4"
+                      borderRadius="$lg"
+                      borderWidth={1}
+                      borderColor={newBudget.period === period ? colors.primary : colors.border}
+                      bg={newBudget.period === period ? colors.primary : colors.white}
+                      alignItems="center"
                       onPress={() => setNewBudget({ ...newBudget, period })}
                     >
                       <Text
-                        style={[
-                          styles.periodText,
-                          newBudget.period === period && styles.periodTextSelected,
-                        ]}
+                        fontSize="$sm"
+                        fontWeight="$medium"
+                        color={newBudget.period === period ? colors.white : colors.textSecondary}
                       >
                         {period.charAt(0).toUpperCase() + period.slice(1)}
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   ))}
-                </View>
-              </View>
+                </HStack>
+              </VStack>
 
-              <View style={styles.modalButtonContainer}>
-                <Button
-                  mode="contained"
+              <VStack mt="$8" space="md">
+                <Pressable
                   onPress={handleAddBudget}
-                  style={styles.saveButton}
+                  bg={colors.primary}
+                  borderRadius="$lg"
+                  py="$3.5"
+                  alignItems="center"
                 >
-                  Create Budget
-                </Button>
-                <Button
-                  mode="text"
+                  <Text color={colors.white} fontWeight="$semibold" fontSize="$md">Create Budget</Text>
+                </Pressable>
+                <Pressable
                   onPress={() => setShowAddModal(false)}
-                  style={styles.cancelButton}
+                  borderRadius="$lg"
+                  py="$3.5"
+                  alignItems="center"
                 >
-                  Cancel
-                </Button>
-              </View>
+                  <Text color={colors.textSecondary} fontWeight="$medium" fontSize="$md">Cancel</Text>
+                </Pressable>
+              </VStack>
             </ScrollView>
-          </View>
+          </Box>
         </Modal>
       </Portal>
-    </View>
+    </Box>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    padding: 20,
-    paddingTop: 40,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#64748b',
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  budgetCard: {
-    marginBottom: 16,
-    backgroundColor: '#ffffff',
-  },
-  budgetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  budgetInfo: {
-    flex: 1,
-  },
-  budgetName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  budgetPeriod: {
-    fontSize: 14,
-    color: '#64748b',
-  },
-  deleteButton: {
-    padding: 4,
-  },
-  budgetAmounts: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: 12,
-  },
-  budgetSpent: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1e293b',
-  },
-  budgetTotal: {
-    fontSize: 16,
-    color: '#64748b',
-  },
-  progressBar: {
-    height: 8,
-    borderRadius: 4,
-    marginBottom: 12,
-  },
-  budgetStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  budgetPercentage: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  budgetRemaining: {
-    fontSize: 14,
-    color: '#10b981',
-    fontWeight: '500',
-  },
-  overBudget: {
-    color: '#ef4444',
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 64,
-    paddingHorizontal: 32,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 16,
-    color: '#64748b',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  addButton: {
-    backgroundColor: '#6366f1',
-  },
-  bottomPadding: {
-    height: 80,
-  },
-  fab: {
-    position: 'absolute',
-    right: 16,
-    bottom: 16,
-    backgroundColor: '#6366f1',
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  modalHeader: {
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  modalContent: {
-    padding: 16,
-  },
-  inputGroup: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#ffffff',
-  },
-  periodContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  periodChip: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-  },
-  periodChipSelected: {
-    backgroundColor: '#6366f1',
-    borderColor: '#6366f1',
-  },
-  periodText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#64748b',
-  },
-  periodTextSelected: {
-    color: '#ffffff',
-  },
-  modalButtonContainer: {
-    marginTop: 32,
-    gap: 12,
-  },
-  saveButton: {
-    backgroundColor: '#6366f1',
-  },
-  cancelButton: {
-    borderColor: '#e2e8f0',
-  },
-});
 
 export default BudgetsScreen;

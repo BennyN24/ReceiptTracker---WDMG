@@ -1,26 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View,
-  ScrollView,
-  StyleSheet,
   FlatList,
   Alert,
   Modal,
   RefreshControl,
 } from 'react-native';
 import {
-  Button,
-  Card,
+  Box,
   Text,
-  FAB,
-  Dialog,
-  Portal,
-  TextInput,
-  SegmentedButtons,
-} from 'react-native-paper';
+  VStack,
+  HStack,
+  Pressable,
+  ScrollView,
+  Input,
+  InputField,
+  Spinner,
+} from '@gluestack-ui/themed';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import RecurringExpenseService from '../services/RecurringExpenseService';
 import StorageService from '../services/StorageService';
+import { colors } from '../styles/theme';
 
 const RecurringExpensesScreen = () => {
   const [recurringExpenses, setRecurringExpenses] = useState([]);
@@ -171,188 +170,208 @@ const RecurringExpensesScreen = () => {
   };
 
   const renderExpenseItem = ({ item }) => (
-    <Card style={styles.card}>
-      <Card.Content>
-        <View style={styles.cardHeader}>
-          <View style={styles.cardTitle}>
-            <Text variant="titleMedium" style={styles.vendor}>
-              {item.vendor}
-            </Text>
-            <Text variant="bodySmall" style={styles.frequency}>
-              {RecurringExpenseService.getFrequencyLabel(item.frequency)}
-            </Text>
-          </View>
-          <Text variant="titleMedium" style={styles.amount}>
-            ${item.amount.toFixed(2)}
+    <Box mb="$3" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
+      <HStack justifyContent="space-between" alignItems="flex-start" mb="$3">
+        <VStack flex={1}>
+          <Text fontWeight="$semibold" fontSize="$md" color={colors.text}>{item.vendor}</Text>
+          <Text fontSize="$sm" color={colors.textSecondary} mt="$1">
+            {RecurringExpenseService.getFrequencyLabel(item.frequency)}
           </Text>
-        </View>
+        </VStack>
+        <Text fontWeight="$bold" fontSize="$md" color={colors.primary}>${item.amount.toFixed(2)}</Text>
+      </HStack>
 
-        <View style={styles.cardDetails}>
-          <Text variant="bodySmall" style={styles.category}>
-            {item.category}
-          </Text>
-          <Text variant="bodySmall" style={styles.date}>
-            Next: {item.nextDueDate.split('T')[0]}
-          </Text>
-        </View>
+      <HStack justifyContent="space-between" mb="$2">
+        <Text fontSize="$sm" color={colors.textSecondary}>{item.category}</Text>
+        <Text fontSize="$sm" color={colors.textSecondary}>Next: {item.nextDueDate.split('T')[0]}</Text>
+      </HStack>
 
-        {item.notes && (
-          <Text variant="bodySmall" style={styles.notes}>
-            {item.notes}
-          </Text>
-        )}
+      {item.notes && (
+        <Text fontSize="$sm" color={colors.textSecondary} fontStyle="italic" my="$2">{item.notes}</Text>
+      )}
 
-        <View style={styles.cardActions}>
-          <Button
-            mode="outlined"
-            size="small"
-            onPress={() => handleEditExpense(item)}
-          >
-            Edit
-          </Button>
-          <Button
-            mode="outlined"
-            size="small"
-            textColor="#ef4444"
-            onPress={() => handleDeleteExpense(item.id)}
-          >
-            Delete
-          </Button>
-        </View>
-      </Card.Content>
-    </Card>
+      <HStack space="sm" mt="$3">
+        <Pressable
+          onPress={() => handleEditExpense(item)}
+          borderWidth={1}
+          borderColor={colors.primary}
+          borderRadius="$lg"
+          px="$4"
+          py="$2"
+        >
+          <Text color={colors.primary} fontWeight="$medium" fontSize="$sm">Edit</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => handleDeleteExpense(item.id)}
+          borderWidth={1}
+          borderColor={colors.error}
+          borderRadius="$lg"
+          px="$4"
+          py="$2"
+        >
+          <Text color={colors.error} fontWeight="$medium" fontSize="$sm">Delete</Text>
+        </Pressable>
+      </HStack>
+    </Box>
   );
 
   return (
-    <View style={styles.container}>
+    <Box flex={1} bg={colors.backgroundSecondary}>
       <ScrollView
-        style={styles.scrollView}
+        flex={1}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6366f1']} tintColor="#6366f1" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />
         }
       >
         {loading ? (
-          <View style={styles.centerContainer}>
-            <Text>Loading recurring expenses...</Text>
-          </View>
+          <Box flex={1} justifyContent="center" alignItems="center" py="$16">
+            <Spinner size="large" color={colors.primary} />
+            <Text mt="$3" color={colors.textSecondary}>Loading recurring expenses...</Text>
+          </Box>
         ) : recurringExpenses.length === 0 ? (
-          <View style={styles.centerContainer}>
-            <Text variant="bodyLarge" style={styles.emptyText}>
-              No recurring expenses yet
-            </Text>
-            <Text variant="bodySmall" style={styles.emptySubtext}>
-              Create one to automate your regular expenses
-            </Text>
-          </View>
+          <VStack alignItems="center" justifyContent="center" py="$16" px="$5">
+            <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mt="$4">No recurring expenses yet</Text>
+            <Text fontSize="$sm" color={colors.textSecondary} mt="$2">Create one to automate your regular expenses</Text>
+          </VStack>
         ) : (
           <FlatList
             data={recurringExpenses}
             renderItem={renderExpenseItem}
             keyExtractor={item => item.id}
             scrollEnabled={false}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={{ padding: 16 }}
           />
         )}
       </ScrollView>
 
-      <FAB
-        icon="plus"
-        onPress={() => {
-          resetForm();
-          setShowModal(true);
-        }}
-        style={styles.fab}
-      />
+      {/* FAB */}
+      <Pressable
+        onPress={() => { resetForm(); setShowModal(true); }}
+        position="absolute"
+        right="$4"
+        bottom="$4"
+        bg={colors.primary}
+        w={56}
+        h={56}
+        borderRadius="$full"
+        alignItems="center"
+        justifyContent="center"
+        shadowColor={colors.primary}
+        shadowOffset={{ width: 0, height: 4 }}
+        shadowOpacity={0.3}
+        shadowRadius={8}
+        elevation={6}
+      >
+        <Text color={colors.white} fontSize="$2xl" fontWeight="$bold">+</Text>
+      </Pressable>
 
       <Modal visible={showModal} animationType="slide">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Button onPress={() => setShowModal(false)}>Cancel</Button>
-            <Text variant="titleMedium">
+        <Box flex={1} bg={colors.backgroundSecondary}>
+          <HStack justifyContent="space-between" alignItems="center" px="$4" pt="$12" pb="$2" borderBottomWidth={1} borderBottomColor={colors.border} bg={colors.white}>
+            <Pressable onPress={() => setShowModal(false)} py="$2">
+              <Text color={colors.textSecondary} fontWeight="$medium">Cancel</Text>
+            </Pressable>
+            <Text fontWeight="$semibold" fontSize="$md" color={colors.text}>
               {editingId ? 'Edit Recurring Expense' : 'Add Recurring Expense'}
             </Text>
-            <Button onPress={handleAddExpense}>Save</Button>
-          </View>
+            <Pressable onPress={handleAddExpense} py="$2">
+              <Text color={colors.primary} fontWeight="$semibold">Save</Text>
+            </Pressable>
+          </HStack>
 
-          <ScrollView style={styles.modalContent}>
-            <TextInput
-              label="Vendor"
-              value={formData.vendor}
-              onChangeText={text => setFormData({ ...formData, vendor: text })}
-              style={styles.input}
-            />
+          <ScrollView flex={1} p="$4">
+            <VStack mb="$4">
+              <Text fontWeight="$medium" fontSize="$sm" color={colors.text} mb="$2">Vendor</Text>
+              <Input borderRadius="$lg" borderColor={colors.border}>
+                <InputField placeholder="Vendor" value={formData.vendor} onChangeText={text => setFormData({ ...formData, vendor: text })} fontSize="$md" />
+              </Input>
+            </VStack>
 
-            <TextInput
-              label="Amount"
-              value={formData.amount}
-              onChangeText={text => setFormData({ ...formData, amount: text })}
-              keyboardType="decimal-pad"
-              style={styles.input}
-            />
+            <VStack mb="$4">
+              <Text fontWeight="$medium" fontSize="$sm" color={colors.text} mb="$2">Amount</Text>
+              <Input borderRadius="$lg" borderColor={colors.border}>
+                <InputField placeholder="0.00" value={formData.amount} onChangeText={text => setFormData({ ...formData, amount: text })} keyboardType="decimal-pad" fontSize="$md" />
+              </Input>
+            </VStack>
 
-            <Text variant="labelMedium" style={styles.label}>
-              Category
-            </Text>
-            <SegmentedButtons
-              value={formData.category}
-              onValueChange={value => setFormData({ ...formData, category: value })}
-              buttons={categories.map(cat => ({ value: cat, label: cat }))}
-              style={styles.segmentedButtons}
-            />
+            <VStack mb="$4">
+              <Text fontWeight="$medium" fontSize="$sm" color={colors.text} mb="$2">Category</Text>
+              <HStack flexWrap="wrap" space="sm">
+                {categories.map(cat => (
+                  <Pressable
+                    key={cat}
+                    onPress={() => setFormData({ ...formData, category: cat })}
+                    bg={formData.category === cat ? colors.primary : colors.white}
+                    borderWidth={1}
+                    borderColor={formData.category === cat ? colors.primary : colors.border}
+                    borderRadius="$full"
+                    px="$3"
+                    py="$1.5"
+                    mb="$2"
+                  >
+                    <Text fontSize="$xs" fontWeight="$medium" color={formData.category === cat ? colors.white : colors.textSecondary}>{cat}</Text>
+                  </Pressable>
+                ))}
+              </HStack>
+            </VStack>
 
-            <Text variant="labelMedium" style={styles.label}>
-              Frequency
-            </Text>
-            <SegmentedButtons
-              value={formData.frequency}
-              onValueChange={value => setFormData({ ...formData, frequency: value })}
-              buttons={frequencyOptions.map(opt => ({
-                value: opt.value,
-                label: opt.label,
-              }))}
-              style={styles.segmentedButtons}
-            />
+            <VStack mb="$4">
+              <Text fontWeight="$medium" fontSize="$sm" color={colors.text} mb="$2">Frequency</Text>
+              <HStack space="sm" flexWrap="wrap">
+                {frequencyOptions.map(opt => (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setFormData({ ...formData, frequency: opt.value })}
+                    bg={formData.frequency === opt.value ? colors.primary : colors.white}
+                    borderWidth={1}
+                    borderColor={formData.frequency === opt.value ? colors.primary : colors.border}
+                    borderRadius="$lg"
+                    px="$4"
+                    py="$2.5"
+                    mb="$2"
+                  >
+                    <Text fontSize="$sm" fontWeight="$medium" color={formData.frequency === opt.value ? colors.white : colors.textSecondary}>{opt.label}</Text>
+                  </Pressable>
+                ))}
+              </HStack>
+            </VStack>
 
-            <View style={styles.dateSection}>
-              <Text variant="labelMedium" style={styles.label}>
-                Start Date
-              </Text>
-              <Button
-                mode="outlined"
-                onPress={() => {
-                  setDatePickerMode('start');
-                  setShowDatePicker(true);
-                }}
+            <VStack mb="$4">
+              <Text fontWeight="$medium" fontSize="$sm" color={colors.text} mb="$2">Start Date</Text>
+              <Pressable
+                onPress={() => { setDatePickerMode('start'); setShowDatePicker(true); }}
+                borderWidth={1}
+                borderColor={colors.primary}
+                borderRadius="$lg"
+                py="$2.5"
+                alignItems="center"
               >
-                {formData.startDate}
-              </Button>
-            </View>
+                <Text color={colors.primary} fontWeight="$medium">{formData.startDate}</Text>
+              </Pressable>
+            </VStack>
 
-            <View style={styles.dateSection}>
-              <Text variant="labelMedium" style={styles.label}>
-                End Date (Optional)
-              </Text>
-              <Button
-                mode="outlined"
-                onPress={() => {
-                  setDatePickerMode('end');
-                  setShowDatePicker(true);
-                }}
+            <VStack mb="$4">
+              <Text fontWeight="$medium" fontSize="$sm" color={colors.text} mb="$2">End Date (Optional)</Text>
+              <Pressable
+                onPress={() => { setDatePickerMode('end'); setShowDatePicker(true); }}
+                borderWidth={1}
+                borderColor={colors.primary}
+                borderRadius="$lg"
+                py="$2.5"
+                alignItems="center"
               >
-                {formData.endDate || 'No end date'}
-              </Button>
-            </View>
+                <Text color={colors.primary} fontWeight="$medium">{formData.endDate || 'No end date'}</Text>
+              </Pressable>
+            </VStack>
 
-            <TextInput
-              label="Notes (Optional)"
-              value={formData.notes}
-              onChangeText={text => setFormData({ ...formData, notes: text })}
-              multiline
-              numberOfLines={3}
-              style={styles.input}
-            />
+            <VStack mb="$4">
+              <Text fontWeight="$medium" fontSize="$sm" color={colors.text} mb="$2">Notes (Optional)</Text>
+              <Input borderRadius="$lg" borderColor={colors.border} h={80}>
+                <InputField placeholder="Notes" value={formData.notes} onChangeText={text => setFormData({ ...formData, notes: text })} fontSize="$md" multiline numberOfLines={3} textAlignVertical="top" />
+              </Input>
+            </VStack>
           </ScrollView>
-        </View>
+        </Box>
       </Modal>
 
       {showDatePicker && (
@@ -363,119 +382,8 @@ const RecurringExpensesScreen = () => {
           onChange={handleDateChange}
         />
       )}
-    </View>
+    </Box>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  emptyText: {
-    marginTop: 16,
-    color: '#1e293b',
-  },
-  emptySubtext: {
-    marginTop: 8,
-    color: '#64748b',
-  },
-  listContent: {
-    padding: 16,
-    gap: 12,
-  },
-  card: {
-    marginBottom: 8,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  cardTitle: {
-    flex: 1,
-  },
-  vendor: {
-    fontWeight: '600',
-    color: '#1e293b',
-  },
-  frequency: {
-    marginTop: 4,
-    color: '#64748b',
-  },
-  amount: {
-    color: '#10b981',
-    fontWeight: '700',
-  },
-  cardDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  category: {
-    color: '#64748b',
-  },
-  date: {
-    color: '#64748b',
-  },
-  notes: {
-    marginVertical: 8,
-    color: '#64748b',
-    fontStyle: 'italic',
-  },
-  cardActions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-  },
-  fab: {
-    position: 'absolute',
-    margin: 16,
-    right: 0,
-    bottom: 0,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  modalContent: {
-    flex: 1,
-    padding: 16,
-  },
-  input: {
-    marginBottom: 16,
-  },
-  label: {
-    marginTop: 12,
-    marginBottom: 8,
-    color: '#1e293b',
-  },
-  segmentedButtons: {
-    marginBottom: 16,
-  },
-  dateSection: {
-    marginBottom: 16,
-  },
-});
 
 export default RecurringExpensesScreen;

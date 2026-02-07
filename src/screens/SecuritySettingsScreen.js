@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View,
-  ScrollView,
-  StyleSheet,
   Alert,
   Modal,
+  Switch,
   RefreshControl,
 } from 'react-native';
 import {
-  Card,
+  Box,
   Text,
-  Switch,
-  Button,
-  TextInput,
-  Dialog,
-  Portal,
-} from 'react-native-paper';
+  VStack,
+  HStack,
+  Heading,
+  Pressable,
+  ScrollView,
+  Input,
+  InputField,
+  Spinner,
+} from '@gluestack-ui/themed';
 import BiometricService from '../services/BiometricService';
+import { colors } from '../styles/theme';
 
 const SecuritySettingsScreen = () => {
   const [biometricAvailable, setBiometricAvailable] = useState(false);
@@ -165,275 +167,169 @@ const SecuritySettingsScreen = () => {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <Text>Loading security settings...</Text>
-      </View>
+      <Box flex={1} justifyContent="center" alignItems="center" bg={colors.backgroundSecondary}>
+        <Spinner size="large" color={colors.primary} />
+        <Text mt="$3" color={colors.textSecondary}>Loading security settings...</Text>
+      </Box>
     );
   }
 
   return (
     <ScrollView
-      style={styles.container}
+      bg={colors.backgroundSecondary}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6366f1']} tintColor="#6366f1" />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />
       }
     >
-      <View style={styles.header}>
-        <Text variant="headlineSmall" style={styles.title}>
-          Security Settings
-        </Text>
-      </View>
+      <Box px="$4" pt="$4" pb="$2">
+        <Heading size="xl" color={colors.text}>Security Settings</Heading>
+      </Box>
 
       {biometricAvailable && (
-        <Card style={styles.card}>
-          <Card.Content>
-            <View style={styles.settingRow}>
-              <View style={styles.settingInfo}>
-                <Text variant="titleMedium" style={styles.settingTitle}>
-                  Biometric Authentication
-                </Text>
-                <Text variant="bodySmall" style={styles.settingDescription}>
-                  Use fingerprint or face recognition to unlock the app
-                </Text>
-              </View>
-              <Switch
-                value={biometricEnabled}
-                onValueChange={handleBiometricToggle}
-              />
-            </View>
-          </Card.Content>
-        </Card>
+        <Box mx="$4" my="$2" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
+          <HStack justifyContent="space-between" alignItems="center">
+            <VStack flex={1} mr="$3">
+              <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$1">
+                Biometric Authentication
+              </Text>
+              <Text fontSize="$sm" color={colors.textSecondary}>
+                Use fingerprint or face recognition to unlock the app
+              </Text>
+            </VStack>
+            <Switch
+              value={biometricEnabled}
+              onValueChange={handleBiometricToggle}
+              trackColor={{ false: '#e2e8f0', true: colors.primaryLighter }}
+              thumbColor={biometricEnabled ? colors.primary : '#ffffff'}
+            />
+          </HStack>
+        </Box>
       )}
 
-      <Card style={styles.card}>
-        <Card.Content>
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text variant="titleMedium" style={styles.settingTitle}>
-                Passcode Lock
-              </Text>
-              <Text variant="bodySmall" style={styles.settingDescription}>
-                {passcodeSet
-                  ? 'Passcode is set. Tap to change or remove.'
-                  : 'Protect your app with a passcode'}
-              </Text>
-            </View>
-          </View>
+      <Box mx="$4" my="$2" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
+        <VStack>
+          <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$1">
+            Passcode Lock
+          </Text>
+          <Text fontSize="$sm" color={colors.textSecondary}>
+            {passcodeSet
+              ? 'Passcode is set. Tap to change or remove.'
+              : 'Protect your app with a passcode'}
+          </Text>
+        </VStack>
 
-          <View style={styles.buttonGroup}>
-            {!passcodeSet ? (
-              <Button
-                mode="contained"
-                onPress={() => {
-                  setPasscodeMode('set');
-                  setShowPasscodeModal(true);
-                }}
-                style={styles.button}
+        <VStack mt="$4" space="sm">
+          {!passcodeSet ? (
+            <Pressable
+              onPress={() => { setPasscodeMode('set'); setShowPasscodeModal(true); }}
+              bg={colors.primary}
+              borderRadius="$lg"
+              py="$3"
+              alignItems="center"
+            >
+              <Text color={colors.white} fontWeight="$semibold">Set Passcode</Text>
+            </Pressable>
+          ) : (
+            <>
+              <Pressable
+                onPress={() => { setPasscodeMode('change'); setShowPasscodeModal(true); }}
+                borderWidth={1.5}
+                borderColor={colors.primary}
+                borderRadius="$lg"
+                py="$3"
+                alignItems="center"
               >
-                Set Passcode
-              </Button>
-            ) : (
-              <>
-                <Button
-                  mode="outlined"
-                  onPress={() => {
-                    setPasscodeMode('change');
-                    setShowPasscodeModal(true);
-                  }}
-                  style={styles.button}
-                >
-                  Change Passcode
-                </Button>
-                <Button
-                  mode="outlined"
-                  textColor="#ef4444"
-                  onPress={handleRemovePasscode}
-                  style={styles.button}
-                >
-                  Remove Passcode
-                </Button>
-              </>
-            )}
-          </View>
-        </Card.Content>
-      </Card>
+                <Text color={colors.primary} fontWeight="$semibold">Change Passcode</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleRemovePasscode}
+                borderWidth={1.5}
+                borderColor={colors.error}
+                borderRadius="$lg"
+                py="$3"
+                alignItems="center"
+              >
+                <Text color={colors.error} fontWeight="$semibold">Remove Passcode</Text>
+              </Pressable>
+            </>
+          )}
+        </VStack>
+      </Box>
 
-      <Card style={styles.card}>
-        <Card.Content>
-          <Text variant="titleMedium" style={styles.settingTitle}>
-            Security Tips
-          </Text>
-          <Text variant="bodySmall" style={styles.tip}>
-            • Use a strong passcode with at least 4 characters
-          </Text>
-          <Text variant="bodySmall" style={styles.tip}>
-            • Enable biometric authentication for quick access
-          </Text>
-          <Text variant="bodySmall" style={styles.tip}>
-            • Regularly review your security settings
-          </Text>
-          <Text variant="bodySmall" style={styles.tip}>
-            • Keep your device software up to date
-          </Text>
-        </Card.Content>
-      </Card>
+      <Box mx="$4" my="$2" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
+        <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$2">Security Tips</Text>
+        <Text fontSize="$sm" color={colors.textSecondary} my="$1">• Use a strong passcode with at least 4 characters</Text>
+        <Text fontSize="$sm" color={colors.textSecondary} my="$1">• Enable biometric authentication for quick access</Text>
+        <Text fontSize="$sm" color={colors.textSecondary} my="$1">• Regularly review your security settings</Text>
+        <Text fontSize="$sm" color={colors.textSecondary} my="$1">• Keep your device software up to date</Text>
+      </Box>
 
       <Modal visible={showPasscodeModal} animationType="slide">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Button onPress={() => setShowPasscodeModal(false)}>Cancel</Button>
-            <Text variant="titleMedium">
+        <Box flex={1} bg={colors.backgroundSecondary}>
+          <HStack justifyContent="space-between" alignItems="center" px="$4" pt="$12" pb="$2" borderBottomWidth={1} borderBottomColor={colors.border} bg={colors.white}>
+            <Pressable onPress={() => setShowPasscodeModal(false)} py="$2">
+              <Text color={colors.textSecondary} fontWeight="$medium">Cancel</Text>
+            </Pressable>
+            <Text fontWeight="$semibold" fontSize="$md" color={colors.text}>
               {passcodeMode === 'set'
                 ? 'Set Passcode'
                 : passcodeMode === 'change'
                 ? 'Change Passcode'
                 : 'Verify Passcode'}
             </Text>
-            <Button
-              onPress={
-                passcodeMode === 'set'
-                  ? handleSetPasscode
-                  : handleChangePasscode
-              }
+            <Pressable
+              onPress={passcodeMode === 'set' ? handleSetPasscode : handleChangePasscode}
+              py="$2"
             >
-              Save
-            </Button>
-          </View>
+              <Text color={colors.primary} fontWeight="$semibold">Save</Text>
+            </Pressable>
+          </HStack>
 
-          <View style={styles.modalContent}>
+          <VStack flex={1} p="$4">
             {passcodeMode === 'change' && (
               <>
-                <TextInput
-                  label="Current Passcode"
-                  value={passcode}
-                  onChangeText={setPasscode}
-                  secureTextEntry
-                  style={styles.input}
-                />
-                <TextInput
-                  label="New Passcode"
-                  value={confirmPasscode}
-                  onChangeText={setConfirmPasscode}
-                  secureTextEntry
-                  style={styles.input}
-                />
+                <VStack mb="$4">
+                  <Text fontWeight="$medium" fontSize="$sm" color={colors.text} mb="$2">Current Passcode</Text>
+                  <Input borderRadius="$lg" borderColor={colors.border}>
+                    <InputField value={passcode} onChangeText={setPasscode} secureTextEntry fontSize="$md" placeholder="Current Passcode" />
+                  </Input>
+                </VStack>
+                <VStack mb="$4">
+                  <Text fontWeight="$medium" fontSize="$sm" color={colors.text} mb="$2">New Passcode</Text>
+                  <Input borderRadius="$lg" borderColor={colors.border}>
+                    <InputField value={confirmPasscode} onChangeText={setConfirmPasscode} secureTextEntry fontSize="$md" placeholder="New Passcode" />
+                  </Input>
+                </VStack>
               </>
             )}
 
             {passcodeMode === 'set' && (
               <>
-                <TextInput
-                  label="Passcode"
-                  value={passcode}
-                  onChangeText={setPasscode}
-                  secureTextEntry
-                  style={styles.input}
-                />
-                <TextInput
-                  label="Confirm Passcode"
-                  value={confirmPasscode}
-                  onChangeText={setConfirmPasscode}
-                  secureTextEntry
-                  style={styles.input}
-                />
+                <VStack mb="$4">
+                  <Text fontWeight="$medium" fontSize="$sm" color={colors.text} mb="$2">Passcode</Text>
+                  <Input borderRadius="$lg" borderColor={colors.border}>
+                    <InputField value={passcode} onChangeText={setPasscode} secureTextEntry fontSize="$md" placeholder="Passcode" />
+                  </Input>
+                </VStack>
+                <VStack mb="$4">
+                  <Text fontWeight="$medium" fontSize="$sm" color={colors.text} mb="$2">Confirm Passcode</Text>
+                  <Input borderRadius="$lg" borderColor={colors.border}>
+                    <InputField value={confirmPasscode} onChangeText={setConfirmPasscode} secureTextEntry fontSize="$md" placeholder="Confirm Passcode" />
+                  </Input>
+                </VStack>
               </>
             )}
 
-            <Card style={styles.infoCard}>
-              <Card.Content>
-                <Text variant="bodySmall" style={styles.infoText}>
-                  Requirements:
-                </Text>
-                <Text variant="bodySmall" style={styles.infoText}>
-                  • Minimum 4 characters
-                </Text>
-                <Text variant="bodySmall" style={styles.infoText}>
-                  • Can contain numbers and letters
-                </Text>
-              </Card.Content>
-            </Card>
-          </View>
-        </View>
+            <Box mt="$4" bg={colors.primaryLightest} borderRadius="$xl" p="$4">
+              <Text fontSize="$sm" color={colors.primaryDark} fontWeight="$medium" mb="$1">Requirements:</Text>
+              <Text fontSize="$sm" color={colors.primaryDark} my="$0.5">• Minimum 4 characters</Text>
+              <Text fontSize="$sm" color={colors.primaryDark} my="$0.5">• Can contain numbers and letters</Text>
+            </Box>
+          </VStack>
+        </Box>
       </Modal>
     </ScrollView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  title: {
-    color: '#1e293b',
-    fontWeight: '600',
-  },
-  card: {
-    marginHorizontal: 16,
-    marginVertical: 8,
-    backgroundColor: '#ffffff',
-  },
-  settingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  settingInfo: {
-    flex: 1,
-    marginRight: 12,
-  },
-  settingTitle: {
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  settingDescription: {
-    color: '#64748b',
-  },
-  buttonGroup: {
-    marginTop: 16,
-    gap: 8,
-  },
-  button: {
-    marginVertical: 4,
-  },
-  tip: {
-    color: '#64748b',
-    marginVertical: 4,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  modalContent: {
-    flex: 1,
-    padding: 16,
-  },
-  input: {
-    marginBottom: 16,
-  },
-  infoCard: {
-    marginTop: 16,
-    backgroundColor: '#f0f9ff',
-  },
-  infoText: {
-    color: '#0369a1',
-    marginVertical: 2,
-  },
-});
 
 export default SecuritySettingsScreen;

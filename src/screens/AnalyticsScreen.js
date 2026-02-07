@@ -1,20 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View,
-  ScrollView,
-  StyleSheet,
   Dimensions,
   RefreshControl,
 } from 'react-native';
 import {
-  Card,
+  Box,
   Text,
-  SegmentedButtons,
-  Button,
-} from 'react-native-paper';
+  VStack,
+  HStack,
+  Heading,
+  Pressable,
+  ScrollView,
+  Spinner,
+} from '@gluestack-ui/themed';
 import StorageService from '../services/StorageService';
 import AnalyticsService from '../services/AnalyticsService';
 import CurrencyService from '../services/CurrencyService';
+import { colors } from '../styles/theme';
 
 const { width } = Dimensions.get('window');
 
@@ -133,171 +135,156 @@ const AnalyticsScreen = () => {
     }).format(amount);
   };
 
-  const renderStatCard = (label, value, color = '#6366f1') => (
-    <Card style={[styles.statCard, { borderLeftColor: color, borderLeftWidth: 4 }]}>
-      <Card.Content>
-        <Text variant="bodySmall" style={styles.statLabel}>
-          {label}
-        </Text>
-        <Text variant="headlineSmall" style={[styles.statValue, { color }]}>
-          {formatCurrency(typeof value === 'number' ? value : 0)}
-        </Text>
-      </Card.Content>
-    </Card>
+  const renderStatCard = (label, value, color = colors.primary) => (
+    <Box mb="$3" bg={colors.white} borderRadius="$xl" p="$4" borderLeftWidth={4} borderLeftColor={color} shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
+      <Text fontSize="$sm" color={colors.textSecondary} mb="$1">{label}</Text>
+      <Text fontSize="$xl" fontWeight="$bold" color={color}>
+        {formatCurrency(typeof value === 'number' ? value : 0)}
+      </Text>
+    </Box>
   );
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <Text>Loading analytics...</Text>
-      </View>
+      <Box flex={1} justifyContent="center" alignItems="center" bg={colors.backgroundSecondary}>
+        <Spinner size="large" color={colors.primary} />
+        <Text mt="$3" color={colors.textSecondary}>Loading analytics...</Text>
+      </Box>
     );
   }
 
   return (
     <ScrollView
-      style={styles.container}
+      bg={colors.backgroundSecondary}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6366f1']} tintColor="#6366f1" />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />
       }
     >
-      <View style={styles.header}>
-        <Text variant="headlineSmall" style={styles.title}>
-          Analytics
-        </Text>
-      </View>
+      <Box px="$4" pt="$4" pb="$2">
+        <Heading size="xl" color={colors.text}>Analytics</Heading>
+      </Box>
 
-      <View style={styles.periodSelector}>
-        <SegmentedButtons
-          value={period}
-          onValueChange={setPeriod}
-          buttons={[
-            { value: 'week', label: 'Week' },
-            { value: 'month', label: 'Month' },
-            { value: 'quarter', label: 'Quarter' },
-            { value: 'year', label: 'Year' },
-          ]}
-        />
-      </View>
+      {/* Period Selector */}
+      <HStack px="$4" py="$3" space="sm">
+        {[
+          { value: 'week', label: 'Week' },
+          { value: 'month', label: 'Month' },
+          { value: 'quarter', label: 'Quarter' },
+          { value: 'year', label: 'Year' },
+        ].map((item) => (
+          <Pressable
+            key={item.value}
+            flex={1}
+            onPress={() => setPeriod(item.value)}
+            bg={period === item.value ? colors.primary : colors.white}
+            borderWidth={1}
+            borderColor={period === item.value ? colors.primary : colors.border}
+            borderRadius="$lg"
+            py="$2.5"
+            alignItems="center"
+          >
+            <Text
+              fontSize="$sm"
+              fontWeight="$medium"
+              color={period === item.value ? colors.white : colors.textSecondary}
+            >
+              {item.label}
+            </Text>
+          </Pressable>
+        ))}
+      </HStack>
 
       {stats && (
-        <View style={styles.section}>
-          <Text variant="titleMedium" style={styles.sectionTitle}>
+        <VStack px="$4" py="$3">
+          <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$3">
             Spending Summary
           </Text>
-          {renderStatCard('Total Spending', stats.total, '#ef4444')}
-          {renderStatCard('Average Transaction', stats.average, '#3b82f6')}
-          {renderStatCard('Highest Transaction', stats.max, '#f59e0b')}
-          <Card style={styles.statCard}>
-            <Card.Content>
-              <Text variant="bodySmall" style={styles.statLabel}>
-                Transaction Count
-              </Text>
-              <Text variant="headlineSmall" style={styles.statValue}>
-                {stats.count}
-              </Text>
-            </Card.Content>
-          </Card>
-        </View>
+          {renderStatCard('Total Spending', stats.total, colors.error)}
+          {renderStatCard('Average Transaction', stats.average, colors.info)}
+          {renderStatCard('Highest Transaction', stats.max, colors.warning)}
+          <Box mb="$3" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
+            <Text fontSize="$sm" color={colors.textSecondary} mb="$1">Transaction Count</Text>
+            <Text fontSize="$xl" fontWeight="$bold" color={colors.text}>{stats.count}</Text>
+          </Box>
+        </VStack>
       )}
 
       {byCategory.length > 0 && (
-        <View style={styles.section}>
-          <Text variant="titleMedium" style={styles.sectionTitle}>
+        <VStack px="$4" py="$3">
+          <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$3">
             Spending by Category
           </Text>
           {byCategory.map((item, index) => (
-            <Card key={index} style={styles.categoryCard}>
-              <Card.Content>
-                <View style={styles.categoryRow}>
-                  <View style={styles.categoryInfo}>
-                    <Text variant="bodyMedium" style={styles.categoryName}>
-                      {item.category}
-                    </Text>
-                    <View style={styles.categoryBar}>
-                      <View
-                        style={[
-                          styles.categoryBarFill,
-                          {
-                            width: `${Math.min(
-                              (item.amount / (stats?.total || 1)) * 100,
-                              100
-                            )}%`,
-                          },
-                        ]}
-                      />
-                    </View>
-                  </View>
-                  <Text variant="bodyMedium" style={styles.categoryAmount}>
-                    {formatCurrency(item.amount)}
-                  </Text>
-                </View>
-              </Card.Content>
-            </Card>
+            <Box key={index} mb="$2" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.04} shadowRadius={3} elevation={1}>
+              <HStack justifyContent="space-between" alignItems="center">
+                <VStack flex={1} mr="$3">
+                  <Text fontSize="$md" color={colors.text} mb="$1.5">{item.category}</Text>
+                  <Box h={6} bg={colors.border} borderRadius="$full" overflow="hidden">
+                    <Box
+                      h="100%"
+                      bg={colors.primary}
+                      borderRadius="$full"
+                      w={`${Math.min((item.amount / (stats?.total || 1)) * 100, 100)}%`}
+                    />
+                  </Box>
+                </VStack>
+                <Text fontSize="$md" fontWeight="$semibold" color={colors.text}>{formatCurrency(item.amount)}</Text>
+              </HStack>
+            </Box>
           ))}
-        </View>
+        </VStack>
       )}
 
       {topVendors.length > 0 && (
-        <View style={styles.section}>
-          <Text variant="titleMedium" style={styles.sectionTitle}>
+        <VStack px="$4" py="$3">
+          <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$3">
             Top Vendors
           </Text>
           {topVendors.map((vendor, index) => (
-            <Card key={index} style={styles.vendorCard}>
-              <Card.Content>
-                <View style={styles.vendorRow}>
-                  <View style={styles.vendorInfo}>
-                    <Text variant="bodyMedium" style={styles.vendorName}>
-                      {vendor.vendor}
-                    </Text>
-                    <Text variant="bodySmall" style={styles.vendorMeta}>
-                      {vendor.count} transactions • Avg: {formatCurrency(vendor.average)}
-                    </Text>
-                  </View>
-                  <Text variant="bodyMedium" style={styles.vendorAmount}>
-                    {formatCurrency(vendor.amount)}
+            <Box key={index} mb="$2" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.04} shadowRadius={3} elevation={1}>
+              <HStack justifyContent="space-between" alignItems="center">
+                <VStack flex={1}>
+                  <Text fontSize="$md" color={colors.text} mb="$1">{vendor.vendor}</Text>
+                  <Text fontSize="$sm" color={colors.textSecondary}>
+                    {vendor.count} transactions • Avg: {formatCurrency(vendor.average)}
                   </Text>
-                </View>
-              </Card.Content>
-            </Card>
+                </VStack>
+                <Text fontSize="$md" fontWeight="$semibold" color={colors.text}>{formatCurrency(vendor.amount)}</Text>
+              </HStack>
+            </Box>
           ))}
-        </View>
+        </VStack>
       )}
 
       {insights.length > 0 && (
-        <View style={styles.section}>
-          <Text variant="titleMedium" style={styles.sectionTitle}>
+        <VStack px="$4" py="$3">
+          <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$3">
             Insights
           </Text>
           {insights.map((insight, index) => (
-            <Card
+            <Box
               key={index}
-              style={[
-                styles.insightCard,
-                {
-                  borderLeftColor:
-                    insight.severity === 'warning' ? '#f59e0b' : '#3b82f6',
-                  borderLeftWidth: 4,
-                },
-              ]}
+              mb="$2"
+              bg={colors.white}
+              borderRadius="$xl"
+              p="$4"
+              borderLeftWidth={4}
+              borderLeftColor={insight.severity === 'warning' ? colors.warning : colors.info}
+              shadowColor={colors.black}
+              shadowOffset={{ width: 0, height: 1 }}
+              shadowOpacity={0.04}
+              shadowRadius={3}
+              elevation={1}
             >
-              <Card.Content>
-                <Text variant="labelMedium" style={styles.insightTitle}>
-                  {insight.title}
-                </Text>
-                <Text variant="bodySmall" style={styles.insightMessage}>
-                  {insight.message}
-                </Text>
-              </Card.Content>
-            </Card>
+              <Text fontSize="$sm" fontWeight="$semibold" color={colors.text} mb="$1">{insight.title}</Text>
+              <Text fontSize="$sm" color={colors.textSecondary}>{insight.message}</Text>
+            </Box>
           ))}
-        </View>
+        </VStack>
       )}
 
-      <View style={styles.section}>
-        <Button
-          mode="outlined"
+      <Box px="$4" py="$3">
+        <Pressable
           onPress={() => {
             const csv = AnalyticsService.exportAnalyticsAsCSV(
               expenses,
@@ -308,124 +295,19 @@ const AnalyticsScreen = () => {
               console.log('CSV exported:', csv);
             }
           }}
+          borderWidth={1.5}
+          borderColor={colors.primary}
+          borderRadius="$lg"
+          py="$3"
+          alignItems="center"
         >
-          Export as CSV
-        </Button>
-      </View>
+          <Text color={colors.primary} fontWeight="$semibold" fontSize="$md">Export as CSV</Text>
+        </Pressable>
+      </Box>
 
-      <View style={styles.spacer} />
+      <Box h={20} />
     </ScrollView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  title: {
-    color: '#1e293b',
-    fontWeight: '600',
-  },
-  periodSelector: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  section: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  sectionTitle: {
-    marginBottom: 12,
-    color: '#1e293b',
-    fontWeight: '600',
-  },
-  statCard: {
-    marginBottom: 12,
-    backgroundColor: '#ffffff',
-  },
-  statLabel: {
-    color: '#64748b',
-    marginBottom: 4,
-  },
-  statValue: {
-    color: '#1e293b',
-    fontWeight: '700',
-  },
-  categoryCard: {
-    marginBottom: 8,
-    backgroundColor: '#ffffff',
-  },
-  categoryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  categoryInfo: {
-    flex: 1,
-    marginRight: 12,
-  },
-  categoryName: {
-    color: '#1e293b',
-    marginBottom: 6,
-  },
-  categoryBar: {
-    height: 6,
-    backgroundColor: '#e2e8f0',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  categoryBarFill: {
-    height: '100%',
-    backgroundColor: '#6366f1',
-  },
-  categoryAmount: {
-    color: '#1e293b',
-    fontWeight: '600',
-  },
-  vendorCard: {
-    marginBottom: 8,
-    backgroundColor: '#ffffff',
-  },
-  vendorRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  vendorInfo: {
-    flex: 1,
-  },
-  vendorName: {
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  vendorMeta: {
-    color: '#64748b',
-  },
-  vendorAmount: {
-    color: '#1e293b',
-    fontWeight: '600',
-  },
-  insightCard: {
-    marginBottom: 8,
-    backgroundColor: '#ffffff',
-  },
-  insightTitle: {
-    color: '#1e293b',
-    marginBottom: 4,
-    fontWeight: '600',
-  },
-  insightMessage: {
-    color: '#64748b',
-  },
-  spacer: {
-    height: 20,
-  },
-});
 
 export default AnalyticsScreen;

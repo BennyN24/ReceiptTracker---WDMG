@@ -1,24 +1,25 @@
 import React, { useState, useRef } from 'react';
 import {
-  View,
-  Text,
   StyleSheet,
-  TouchableOpacity,
   Alert,
   Image,
 } from 'react-native';
 import {
-  Button,
-  Card,
-  Appbar,
-  ActivityIndicator,
-} from 'react-native-paper';
+  Box,
+  Text,
+  VStack,
+  HStack,
+  Heading,
+  Pressable,
+  Spinner,
+} from '@gluestack-ui/themed';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import AddExpenseModal from '../components/AddExpenseModal';
 import { StorageService } from '../services/StorageService';
 import OCRService from '../services/OCRService';
+import { colors } from '../styles/theme';
 
 const CaptureScreen = ({ navigation }) => {
   const [facing, setFacing] = useState('back');
@@ -146,136 +147,141 @@ const CaptureScreen = ({ navigation }) => {
 
   if (!permission) {
     return (
-      <View style={styles.permissionContainer}>
-        <Text style={styles.permissionText}>Requesting camera permission...</Text>
-      </View>
+      <Box flex={1} justifyContent="center" alignItems="center" p="$8" bg={colors.white}>
+        <Spinner size="large" color={colors.primary} />
+        <Text color={colors.textSecondary} fontSize="$md" mt="$4">Requesting camera permission...</Text>
+      </Box>
     );
   }
 
   if (!permission.granted) {
     return (
-      <View style={styles.permissionContainer}>
-        <Icon name="camera-alt" size={64} color="#94a3b8" />
-        <Text style={styles.permissionTitle}>No access to camera</Text>
-        <Text style={styles.permissionText}>
+      <Box flex={1} justifyContent="center" alignItems="center" p="$8" bg={colors.white}>
+        <Icon name="camera-alt" size={64} color={colors.textMuted} />
+        <Text fontWeight="$semibold" fontSize="$xl" color={colors.text} mt="$4" mb="$2">No access to camera</Text>
+        <Text fontSize="$md" color={colors.textSecondary} textAlign="center" mb="$6">
           Please enable camera access in your device settings to capture receipts.
         </Text>
-        <Button
-          mode="contained"
-          onPress={requestPermission}
-          style={styles.retryButton}
-        >
-          Retry
-        </Button>
-      </View>
+        <Pressable onPress={requestPermission} bg={colors.primary} borderRadius="$lg" px="$6" py="$3">
+          <Text color={colors.white} fontWeight="$semibold">Retry</Text>
+        </Pressable>
+      </Box>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <Box flex={1} bg={colors.black}>
       {!capturedImage ? (
         // Camera View
-        <View style={styles.cameraContainer}>
+        <Box flex={1}>
           <CameraView
-            style={styles.camera}
+            style={{ flex: 1 }}
             facing={facing}
             ref={cameraRef}
           />
 
-          <View style={styles.cameraOverlay}>
-            <View style={styles.topControls}>
-              <TouchableOpacity
-                style={styles.flipButton}
+          <Box position="absolute" top={0} left={0} right={0} bottom={0} justifyContent="space-between">
+            <HStack justifyContent="flex-end" pt="$12" px="$5">
+              <Pressable
                 onPress={toggleCameraType}
+                bg="rgba(0, 0, 0, 0.5)"
+                borderRadius="$full"
+                p="$2"
               >
-                <Icon name="flip-camera-android" size={24} color="#ffffff" />
-              </TouchableOpacity>
-            </View>
+                <Icon name="flip-camera-android" size={24} color={colors.white} />
+              </Pressable>
+            </HStack>
 
-            <View style={styles.bottomControls}>
-              <TouchableOpacity
-                style={styles.galleryButton}
+            <HStack justifyContent="space-between" alignItems="center" px="$8" pb="$10">
+              <Pressable
                 onPress={pickImage}
+                bg="rgba(255, 255, 255, 0.2)"
+                borderRadius="$full"
+                p="$2"
               >
-                <Icon name="photo-library" size={32} color="#ffffff" />
-              </TouchableOpacity>
+                <Icon name="photo-library" size={32} color={colors.white} />
+              </Pressable>
 
-              <TouchableOpacity
-                style={styles.captureButton}
-                onPress={takePicture}
-              >
-                <View style={styles.captureButtonInner} />
-              </TouchableOpacity>
+              <Pressable onPress={takePicture}>
+                <Box w={70} h={70} borderRadius="$full" bg="rgba(255, 255, 255, 0.9)" justifyContent="center" alignItems="center">
+                  <Box w={60} h={60} borderRadius="$full" bg={colors.white} borderWidth={2} borderColor={colors.primary} />
+                </Box>
+              </Pressable>
 
-              <View style={styles.placeholderButton} />
-            </View>
-          </View>
+              <Box w={40} />
+            </HStack>
+          </Box>
 
-          <View style={styles.instructions}>
-            <Text style={styles.instructionText}>Tap to Take Photo</Text>
-            <Text style={styles.instructionSubtext}>or select from gallery</Text>
-          </View>
-        </View>
+          <Box position="absolute" bottom={120} left={0} right={0} alignItems="center">
+            <Text fontWeight="$semibold" fontSize="$lg" color={colors.white} mb="$1">Tap to Take Photo</Text>
+            <Text fontSize="$sm" color="rgba(255, 255, 255, 0.8)">or select from gallery</Text>
+          </Box>
+        </Box>
       ) : (
         // Image Preview View
-        <View style={styles.previewContainer}>
-          <Appbar.Header style={styles.previewHeader}>
-            <Appbar.Action icon="close" onPress={retakePicture} />
-            <Appbar.Content title="Review Receipt" />
-            <Appbar.Action icon="check" onPress={processImage} />
-          </Appbar.Header>
+        <Box flex={1} bg={colors.white}>
+          <HStack bg={colors.white} borderBottomWidth={1} borderBottomColor={colors.border} py="$3" px="$2" alignItems="center" justifyContent="space-between" pt="$12">
+            <Pressable onPress={retakePicture} p="$2">
+              <Icon name="close" size={24} color={colors.text} />
+            </Pressable>
+            <Text fontWeight="$semibold" fontSize="$lg" color={colors.text}>Review Receipt</Text>
+            <Pressable onPress={processImage} p="$2">
+              <Icon name="check" size={24} color={colors.primary} />
+            </Pressable>
+          </HStack>
 
-          <View style={styles.previewContent}>
+          <Box flex={1} p="$4">
             <Image
               source={{ uri: capturedImage.uri }}
-              style={styles.previewImage}
+              style={{ width: '100%', height: 300, borderRadius: 12, marginBottom: 20 }}
               resizeMode="contain"
             />
 
-            <Card style={styles.processingCard}>
-              <Card.Content style={styles.processingContent}>
-                {isProcessing ? (
-                  <View style={styles.processingContainer}>
-                    <ActivityIndicator size="large" color="#6366f1" />
-                    <Text style={styles.processingText}>Processing receipt...</Text>
-                    <Text style={styles.processingSubtext}>
-                      Extracting text and analyzing data
-                    </Text>
-                  </View>
-                ) : ocrData ? (
-                  <View style={styles.processedContainer}>
-                    <Icon name="check-circle" size={48} color="#10b981" />
-                    <Text style={styles.processedText}>Receipt processed!</Text>
-                    {ocrData.vendor && (
-                      <Text style={styles.ocrResultText}>Vendor: {ocrData.vendor}</Text>
-                    )}
-                    {ocrData.amount && (
-                      <Text style={styles.ocrResultText}>Amount: ${ocrData.amount.toFixed(2)}</Text>
-                    )}
-                    {ocrData.date && (
-                      <Text style={styles.ocrResultText}>Date: {ocrData.date}</Text>
-                    )}
-                    <Button
-                      mode="contained"
-                      onPress={() => setShowAddModal(true)}
-                      style={styles.addExpenseButton}
-                    >
-                      Confirm & Add Expense
-                    </Button>
-                  </View>
-                ) : (
-                  <View style={styles.processedContainer}>
-                    <Icon name="document-scanner" size={48} color="#6366f1" />
-                    <Text style={styles.processedText}>Ready to scan</Text>
-                    <Text style={styles.processedSubtext}>
-                      Tap the checkmark above to process this receipt
-                    </Text>
-                  </View>
-                )}
-              </Card.Content>
-            </Card>
-          </View>
-        </View>
+            <Box bg={colors.backgroundSecondary} borderRadius="$xl" p="$6">
+              {isProcessing ? (
+                <VStack alignItems="center">
+                  <Spinner size="large" color={colors.primary} />
+                  <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mt="$4" mb="$1">Processing receipt...</Text>
+                  <Text fontSize="$sm" color={colors.textSecondary} textAlign="center">
+                    Extracting text and analyzing data
+                  </Text>
+                </VStack>
+              ) : ocrData ? (
+                <VStack alignItems="center">
+                  <Icon name="check-circle" size={48} color={colors.success} />
+                  <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mt="$4" mb="$1">Receipt processed!</Text>
+                  {ocrData.vendor && (
+                    <Text fontSize="$md" color={colors.text} mt="$1">Vendor: {ocrData.vendor}</Text>
+                  )}
+                  {ocrData.amount && (
+                    <Text fontSize="$md" color={colors.text} mt="$1">Amount: ${ocrData.amount.toFixed(2)}</Text>
+                  )}
+                  {ocrData.date && (
+                    <Text fontSize="$md" color={colors.text} mt="$1">Date: {ocrData.date}</Text>
+                  )}
+                  <Pressable
+                    onPress={() => setShowAddModal(true)}
+                    bg={colors.primary}
+                    borderRadius="$lg"
+                    px="$6"
+                    py="$3"
+                    mt="$4"
+                  >
+                    <Text color={colors.white} fontWeight="$semibold">Confirm & Add Expense</Text>
+                  </Pressable>
+                </VStack>
+              ) : (
+                <VStack alignItems="center">
+                  <Icon name="document-scanner" size={48} color={colors.primary} />
+                  <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mt="$4" mb="$1">Ready to scan</Text>
+                  <Text fontSize="$sm" color={colors.textSecondary} textAlign="center" mb="$5">
+                    Tap the checkmark above to process this receipt
+                  </Text>
+                </VStack>
+              )}
+            </Box>
+          </Box>
+        </Box>
       )}
 
       {/* Add Expense Modal */}
@@ -290,177 +296,8 @@ const CaptureScreen = ({ navigation }) => {
           initialData={ocrData}
         />
       )}
-    </View>
+    </Box>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  permissionContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-    backgroundColor: '#ffffff',
-  },
-  permissionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  permissionText: {
-    fontSize: 16,
-    color: '#64748b',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  retryButton: {
-    backgroundColor: '#6366f1',
-  },
-  cameraContainer: {
-    flex: 1,
-  },
-  camera: {
-    flex: 1,
-  },
-  cameraOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'transparent',
-    justifyContent: 'space-between',
-  },
-  topControls: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingTop: 50,
-    paddingHorizontal: 20,
-  },
-  flipButton: {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 20,
-    padding: 8,
-  },
-  bottomControls: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 30,
-    paddingBottom: 40,
-  },
-  galleryButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 25,
-    padding: 8,
-  },
-  captureButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  captureButtonInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#ffffff',
-    borderWidth: 2,
-    borderColor: '#6366f1',
-  },
-  placeholderButton: {
-    width: 40,
-  },
-  instructions: {
-    position: 'absolute',
-    bottom: 120,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  instructionText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 4,
-  },
-  instructionSubtext: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  previewContainer: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  previewHeader: {
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  previewContent: {
-    flex: 1,
-    padding: 16,
-  },
-  previewImage: {
-    width: '100%',
-    height: 300,
-    borderRadius: 12,
-    marginBottom: 20,
-  },
-  processingCard: {
-    backgroundColor: '#f8fafc',
-  },
-  processingContent: {
-    padding: 24,
-  },
-  processingContainer: {
-    alignItems: 'center',
-  },
-  processingText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginTop: 16,
-    marginBottom: 4,
-  },
-  processingSubtext: {
-    fontSize: 14,
-    color: '#64748b',
-    textAlign: 'center',
-  },
-  processedContainer: {
-    alignItems: 'center',
-  },
-  processedText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginTop: 16,
-    marginBottom: 4,
-  },
-  processedSubtext: {
-    fontSize: 14,
-    color: '#64748b',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  ocrResultText: {
-    fontSize: 15,
-    color: '#334155',
-    marginTop: 4,
-  },
-  addExpenseButton: {
-    backgroundColor: '#6366f1',
-    marginTop: 16,
-  },
-});
 
 export default CaptureScreen;

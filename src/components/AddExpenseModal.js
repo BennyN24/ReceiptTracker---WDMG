@@ -1,23 +1,23 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   Alert,
 } from 'react-native';
 import {
-  Modal,
   Portal,
-  Button,
-  TextInput,
-  Chip,
-  Divider,
-  Appbar,
 } from 'react-native-paper';
+import {
+  Box,
+  Text,
+  VStack,
+  HStack,
+  Pressable,
+  ScrollView,
+  Input,
+  InputField,
+} from '@gluestack-ui/themed';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { colors } from '../styles/theme';
 
 const AddExpenseModal = ({ onClose, onSave, categories, initialData }) => {
   const [vendor, setVendor] = useState(initialData?.vendor || '');
@@ -86,136 +86,153 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData }) => {
 
   return (
     <Portal>
-      <View style={styles.container}>
-        <Appbar.Header style={styles.header}>
-          <Appbar.Action icon="close" onPress={onClose} />
-          <Appbar.Content title="Add Expense" />
-          <Appbar.Action icon="check" onPress={handleSave} />
-        </Appbar.Header>
+      <Box flex={1} bg={colors.white}>
+        <HStack bg={colors.white} borderBottomWidth={1} borderBottomColor={colors.border} py="$3" px="$2" alignItems="center" justifyContent="space-between" pt="$12">
+          <Pressable onPress={onClose} p="$2">
+            <Icon name="close" size={24} color={colors.text} />
+          </Pressable>
+          <Text fontWeight="$semibold" fontSize="$lg" color={colors.text}>Add Expense</Text>
+          <Pressable onPress={handleSave} p="$2">
+            <Icon name="check" size={24} color={colors.primary} />
+          </Pressable>
+        </HStack>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView flex={1} p="$4" showsVerticalScrollIndicator={false}>
           {/* Vendor Input */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Vendor</Text>
-            <TextInput
-              label="e.g. Starbucks"
-              value={vendor}
-              onChangeText={setVendor}
-              mode="outlined"
-              style={styles.input}
-              error={!!errors.vendor}
-            />
+          <VStack mb="$6">
+            <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$2">Vendor</Text>
+            <Input
+              borderRadius="$lg"
+              borderColor={errors.vendor ? colors.error : colors.border}
+              borderWidth={errors.vendor ? 2 : 1}
+            >
+              <InputField
+                placeholder="e.g. Starbucks"
+                value={vendor}
+                onChangeText={setVendor}
+                fontSize="$md"
+              />
+            </Input>
             {errors.vendor && (
-              <Text style={styles.errorText}>{errors.vendor}</Text>
+              <Text fontSize="$xs" color={colors.error} mt="$1">{errors.vendor}</Text>
             )}
-          </View>
+          </VStack>
 
           {/* Amount Input */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Amount ($)</Text>
-            <TextInput
-              label="0.00"
-              value={amount}
-              onChangeText={(text) => {
-                // Only allow numeric input with decimal point
-                const numericValue = text.replace(/[^0-9.]/g, '');
-                // Ensure only one decimal point
-                const parts = numericValue.split('.');
-                if (parts.length > 2) {
-                  setAmount(parts[0] + '.' + parts[1]);
-                } else {
-                  setAmount(numericValue);
-                }
-              }}
-              mode="outlined"
-              keyboardType="numeric"
-              style={styles.input}
-              error={!!errors.amount}
-            />
+          <VStack mb="$6">
+            <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$2">Amount ($)</Text>
+            <Input
+              borderRadius="$lg"
+              borderColor={errors.amount ? colors.error : colors.border}
+              borderWidth={errors.amount ? 2 : 1}
+            >
+              <InputField
+                placeholder="0.00"
+                value={amount}
+                onChangeText={(text) => {
+                  // Only allow numeric input with decimal point
+                  const numericValue = text.replace(/[^0-9.]/g, '');
+                  // Ensure only one decimal point
+                  const parts = numericValue.split('.');
+                  if (parts.length > 2) {
+                    setAmount(parts[0] + '.' + parts[1]);
+                  } else {
+                    setAmount(numericValue);
+                  }
+                }}
+                keyboardType="numeric"
+                fontSize="$md"
+              />
+            </Input>
             {errors.amount && (
-              <Text style={styles.errorText}>{errors.amount}</Text>
+              <Text fontSize="$xs" color={colors.error} mt="$1">{errors.amount}</Text>
             )}
-          </View>
+          </VStack>
 
           {/* Description Input */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Description</Text>
-            <TextInput
-              label="Items or notes"
-              value={description}
-              onChangeText={setDescription}
-              mode="outlined"
-              multiline
-              numberOfLines={4}
-              style={[styles.input, styles.descriptionInput]}
-            />
-          </View>
+          <VStack mb="$6">
+            <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$2">Description</Text>
+            <Input borderRadius="$lg" borderColor={colors.border} h={100}>
+              <InputField
+                placeholder="Items or notes"
+                value={description}
+                onChangeText={setDescription}
+                fontSize="$md"
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </Input>
+          </VStack>
 
           {/* Category Selection */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Category</Text>
-            <View style={styles.categoryContainer}>
+          <VStack mb="$6">
+            <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$2">Category</Text>
+            <HStack flexWrap="wrap" space="sm">
               {categories.map((category) => (
-                <Chip
+                <Pressable
                   key={category.id}
-                  selected={selectedCategory === category.id}
                   onPress={() => setSelectedCategory(category.id)}
-                  style={[
-                    styles.categoryChip,
-                    selectedCategory === category.id && {
-                      backgroundColor: category.color,
-                    },
-                  ]}
-                  textStyle={[
-                    styles.categoryText,
-                    selectedCategory === category.id && {
-                      color: '#ffffff',
-                    },
-                  ]}
+                  bg={selectedCategory === category.id ? category.color : colors.borderLight}
+                  borderRadius="$full"
+                  px="$3.5"
+                  py="$2"
+                  mb="$2"
                 >
-                  {category.name}
-                </Chip>
+                  <Text
+                    fontSize="$sm"
+                    fontWeight="$medium"
+                    color={selectedCategory === category.id ? colors.white : colors.textSecondary}
+                  >
+                    {category.name}
+                  </Text>
+                </Pressable>
               ))}
-            </View>
+            </HStack>
             {errors.category && (
-              <Text style={styles.errorText}>{errors.category}</Text>
+              <Text fontSize="$xs" color={colors.error} mt="$1">{errors.category}</Text>
             )}
-          </View>
+          </VStack>
 
           {/* Date Selection */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Date</Text>
-            <TouchableOpacity
-              style={styles.dateButton}
+          <VStack mb="$6">
+            <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$2">Date</Text>
+            <Pressable
               onPress={() => setShowDatePicker(true)}
+              borderWidth={1}
+              borderColor={colors.border}
+              borderRadius="$lg"
+              p="$4"
+              bg={colors.white}
             >
-              <View style={styles.dateContent}>
-                <Icon name="calendar-today" size={20} color="#64748b" />
-                <Text style={styles.dateText}>{formatDate(date)}</Text>
-                <Icon name="chevron-right" size={20} color="#64748b" />
-              </View>
-            </TouchableOpacity>
-          </View>
+              <HStack alignItems="center" justifyContent="space-between">
+                <Icon name="calendar-today" size={20} color={colors.textSecondary} />
+                <Text fontSize="$md" color={colors.text} flex={1} textAlign="center">{formatDate(date)}</Text>
+                <Icon name="chevron-right" size={20} color={colors.textSecondary} />
+              </HStack>
+            </Pressable>
+          </VStack>
 
           {/* Action Buttons */}
-          <View style={styles.buttonContainer}>
-            <Button
-              mode="contained"
+          <VStack mt="$8" space="md">
+            <Pressable
               onPress={handleSave}
-              style={styles.saveButton}
-              contentStyle={styles.buttonContent}
+              bg={colors.primary}
+              borderRadius="$lg"
+              py="$4"
+              alignItems="center"
             >
-              Save Expense
-            </Button>
-            <Button
-              mode="text"
+              <Text color={colors.white} fontWeight="$semibold" fontSize="$md">Save Expense</Text>
+            </Pressable>
+            <Pressable
               onPress={onClose}
-              style={styles.cancelButton}
-              contentStyle={styles.buttonContent}
+              borderRadius="$lg"
+              py="$4"
+              alignItems="center"
             >
-              Cancel
-            </Button>
-          </View>
+              <Text color={colors.textSecondary} fontWeight="$medium" fontSize="$md">Cancel</Text>
+            </Pressable>
+          </VStack>
         </ScrollView>
 
         {/* Date Picker Modal */}
@@ -228,88 +245,9 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData }) => {
             maximumDate={new Date()}
           />
         )}
-      </View>
+      </Box>
     </Portal>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  header: {
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  inputGroup: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#ffffff',
-  },
-  descriptionInput: {
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  errorText: {
-    fontSize: 12,
-    color: '#ef4444',
-    marginTop: 4,
-  },
-  categoryContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  categoryChip: {
-    backgroundColor: '#f1f5f9',
-  },
-  categoryText: {
-    color: '#64748b',
-  },
-  dateButton: {
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    padding: 16,
-    backgroundColor: '#ffffff',
-  },
-  dateContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  dateText: {
-    fontSize: 16,
-    color: '#1e293b',
-    flex: 1,
-    textAlign: 'center',
-  },
-  buttonContainer: {
-    marginTop: 32,
-    gap: 12,
-  },
-  saveButton: {
-    backgroundColor: '#6366f1',
-  },
-  cancelButton: {
-    borderColor: '#e2e8f0',
-  },
-  buttonContent: {
-    paddingVertical: 8,
-  },
-});
 
 export default AddExpenseModal;
