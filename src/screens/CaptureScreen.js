@@ -19,6 +19,8 @@ import Icon from '@expo/vector-icons/MaterialIcons';
 import AddExpenseModal from '../components/AddExpenseModal';
 import { StorageService } from '../services/StorageService';
 import OCRService from '../services/OCRService';
+import GeminiService from '../services/GeminiService';
+import ImageStorageService from '../services/ImageStorageService';
 import { colors } from '../styles/theme';
 
 const CaptureScreen = ({ navigation }) => {
@@ -29,6 +31,8 @@ const CaptureScreen = ({ navigation }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [categories, setCategories] = useState([]);
   const [ocrData, setOcrData] = useState(null);
+  const [savedImageUri, setSavedImageUri] = useState(null);
+  const [processingStage, setProcessingStage] = useState('');
   const cameraRef = useRef();
 
   React.useEffect(() => {
@@ -51,21 +55,48 @@ const CaptureScreen = ({ navigation }) => {
   };
 
   const takePicture = async () => {
-    if (cameraRef.current) {
-      try {
-        const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.8,
-          base64: false,
-        });
-        setCapturedImage(photo);
-      } catch (error) {
-        Alert.alert('Error', 'Failed to take picture');
+    if (!cameraRef.current) {
+      console.error('Camera ref not available');
+      Alert.alert('Error', 'Camera not ready. Please try again.');
+      return;
+    }
+
+    try {
+      console.log('Taking picture...');
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+        base64: false,
+        skipProcessing: false,
+      });
+
+      if (!photo || !photo.uri) {
+        console.error('Photo capture returned invalid data:', photo);
+        Alert.alert('Error', 'Failed to capture image. Please try again.');
+        return;
       }
+
+      console.log('Photo captured successfully:', photo.uri);
+      setCapturedImage(photo);
+
+      // Save image to persistent storage
+      try {
+        console.log('Saving image to persistent storage...');
+        const permanentUri = await ImageStorageService.saveReceiptImage(photo.uri);
+        console.log('Image saved successfully:', permanentUri);
+        setSavedImageUri(permanentUri);
+      } catch (saveError) {
+        console.warn('Failed to save receipt image, using temporary URI:', saveError);
+        setSavedImageUri(photo.uri);
+      }
+    } catch (error) {
+      console.error('Error taking picture:', error);
+      Alert.alert('Error', `Failed to take picture: ${error.message || 'Unknown error'}`);
     }
   };
 
   const pickImage = async () => {
     try {
+      console.log('Launching image picker...');
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
@@ -73,29 +104,128 @@ const CaptureScreen = ({ navigation }) => {
         base64: false,
       });
 
-      if (!result.canceled) {
-        setCapturedImage(result.assets[0]);
+      if (result.canceled) {
+        console.log('Image picker canceled by user');
+        return;
+      }
+
+      if (!result.assets || result.assets.length === 0) {
+        console.error('No image selected');
+        Alert.alert('Error', 'No image was selected. Please try again.');
+        return;
+      }
+
+      const pickedImage = result.assets[0];
+      if (!pickedImage || !pickedImage.uri) {
+        console.error('Invalid image data:', pickedImage);
+        Alert.alert('Error', 'Invalid image selected. Please try again.');
+        return;
+      }
+
+      console.log('Image picked successfully:', pickedImage.uri);
+      setCapturedImage(pickedImage);
+
+      // Save image to persistent storage
+      try {
+        console.log('Saving picked image to persistent storage...');
+        const permanentUri = await ImageStorageService.saveReceiptImage(pickedImage.uri);
+        console.log('Image saved successfully:', permanentUri);
+        setSavedImageUri(permanentUri);
+      } catch (saveError) {
+        console.warn('Failed to save receipt image, using temporary URI:', saveError);
+        setSavedImageUri(pickedImage.uri);
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to pick image');
+      console.error('Error picking image:', error);
+      Alert.alert('Error', `Failed to pick image: ${error.message || 'Unknown error'}`);
     }
   };
 
   const retakePicture = () => {
     setCapturedImage(null);
+    setSavedImageUri(null);
+    setProcessingStage('');
   };
 
   const processImage = async () => {
     setIsProcessing(true);
     setOcrData(null);
+    setProcessingStage('Analyzing receipt with AI...');
+
+    const imageUri = savedImageUri || capturedImage.uri;
+
     try {
-      const result = await OCRService.extractReceiptData(capturedImage.uri);
+      // Primary: Try Gemini AI analysis
+      setProcessingStage('Sending to Gemini AI...');
+      const geminiResult = await GeminiService.analyzeReceipt(imageUri);
+
+      if (geminiResult && !geminiResult.error) {
+        const quality = GeminiService.getExtractionQuality(geminiResult);
+        setOcrData(geminiResult);
+        setProcessingStage('');
+
+        if (quality.status === 'good') {
+          setShowAddModal(true);
+        } else if (quality.status === 'warning') {
+          Alert.alert(
+            'Partial Extraction',
+            quality.message,
+            [{ text: 'OK', onPress: () => setShowAddModal(true) }]
+          );
+        } else {
+          Alert.alert(
+            'Low Confidence',
+            quality.message,
+            [
+              { text: 'Add Manually', onPress: () => setShowAddModal(true) },
+              { text: 'Retry with OCR', onPress: () => fallbackToOCR(imageUri) },
+            ]
+          );
+        }
+        return;
+      }
+
+      // If Gemini returned rate limit error
+      if (geminiResult?.error === 'rate_limited') {
+        Alert.alert(
+          'Rate Limited',
+          geminiResult.message,
+          [
+            { text: 'Try OCR Instead', onPress: () => fallbackToOCR(imageUri) },
+            { text: 'Add Manually', onPress: () => setShowAddModal(true) },
+          ]
+        );
+        setIsProcessing(false);
+        setProcessingStage('');
+        return;
+      }
+
+      // Fallback: Try OCR if Gemini fails
+      await fallbackToOCR(imageUri);
+    } catch (error) {
+      console.error('Processing error:', error);
+      Alert.alert(
+        'Processing Error',
+        'An error occurred while processing the receipt. You can still add the expense manually.',
+        [{ text: 'Add Manually', onPress: () => setShowAddModal(true) }]
+      );
+    } finally {
+      setIsProcessing(false);
+      setProcessingStage('');
+    }
+  };
+
+  const fallbackToOCR = async (imageUri) => {
+    setIsProcessing(true);
+    setProcessingStage('Falling back to OCR...');
+    try {
+      const result = await OCRService.extractReceiptData(imageUri);
       if (result) {
         setOcrData(result);
         const quality = OCRService.getExtractionQuality(result);
         if (quality.status === 'warning') {
           Alert.alert(
-            'Partial Extraction',
+            'Partial Extraction (OCR)',
             'Some fields could not be extracted. Please review and fill in missing details.',
             [{ text: 'OK', onPress: () => setShowAddModal(true) }]
           );
@@ -110,7 +240,7 @@ const CaptureScreen = ({ navigation }) => {
         );
       }
     } catch (error) {
-      console.error('OCR processing error:', error);
+      console.error('OCR fallback error:', error);
       Alert.alert(
         'Processing Error',
         'An error occurred while processing the receipt. You can still add the expense manually.',
@@ -118,18 +248,25 @@ const CaptureScreen = ({ navigation }) => {
       );
     } finally {
       setIsProcessing(false);
+      setProcessingStage('');
     }
   };
 
   const handleSaveExpense = async (expenseData) => {
     try {
+      const receiptImagePath = savedImageUri || capturedImage.uri;
       const expenseWithImage = {
         ...expenseData,
-        receiptImage: capturedImage.uri,
+        receiptImage: receiptImagePath,
+        analysisSource: ocrData?.source || 'manual',
+        analysisConfidence: ocrData?.confidence || null,
       };
       await StorageService.addExpense(expenseWithImage);
       setShowAddModal(false);
       setCapturedImage(null);
+      setSavedImageUri(null);
+      setOcrData(null);
+      setProcessingStage('');
       Alert.alert('Success', 'Expense added successfully!', [
         {
           text: 'OK',
@@ -243,21 +380,37 @@ const CaptureScreen = ({ navigation }) => {
                   <Spinner size="large" color={colors.primary} />
                   <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mt="$4" mb="$1">Processing receipt...</Text>
                   <Text fontSize="$sm" color={colors.textSecondary} textAlign="center">
-                    Extracting text and analyzing data
+                    {processingStage || 'Extracting text and analyzing data'}
                   </Text>
                 </VStack>
               ) : ocrData ? (
                 <VStack alignItems="center">
                   <Icon name="check-circle" size={48} color={colors.success} />
                   <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mt="$4" mb="$1">Receipt processed!</Text>
-                  {ocrData.vendor && (
+                  {/* Source badge */}
+                  <Box bg={ocrData.source === 'gemini_ai' ? colors.info : colors.primaryLight} borderRadius="$full" px="$3" py="$1" mb="$2">
+                    <Text fontSize="$xs" color={colors.white} fontWeight="$semibold">
+                      {ocrData.source === 'gemini_ai' ? 'Gemini AI' : ocrData.source === 'google_cloud_vision' ? 'Cloud Vision' : 'OCR'}
+                    </Text>
+                  </Box>
+                  {ocrData.confidence !== null && ocrData.confidence !== undefined && (
+                    <Text fontSize="$xs" color={colors.textMuted} mb="$2">
+                      Confidence: {Math.round((ocrData.confidence || 0) * 100)}%
+                    </Text>
+                  )}
+                  {ocrData.vendor ? (
                     <Text fontSize="$md" color={colors.text} mt="$1">Vendor: {ocrData.vendor}</Text>
-                  )}
-                  {ocrData.amount && (
+                  ) : null}
+                  {ocrData.amount ? (
                     <Text fontSize="$md" color={colors.text} mt="$1">Amount: ${ocrData.amount.toFixed(2)}</Text>
-                  )}
-                  {ocrData.date && (
+                  ) : null}
+                  {ocrData.date ? (
                     <Text fontSize="$md" color={colors.text} mt="$1">Date: {ocrData.date}</Text>
+                  ) : null}
+                  {ocrData.items && ocrData.items.length > 0 && (
+                    <Text fontSize="$sm" color={colors.textSecondary} mt="$2">
+                      {ocrData.items.length} item{ocrData.items.length !== 1 ? 's' : ''} detected
+                    </Text>
                   )}
                   <Pressable
                     onPress={() => setShowAddModal(true)}
@@ -274,9 +427,18 @@ const CaptureScreen = ({ navigation }) => {
                 <VStack alignItems="center">
                   <Icon name="document-scanner" size={48} color={colors.primary} />
                   <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mt="$4" mb="$1">Ready to scan</Text>
-                  <Text fontSize="$sm" color={colors.textSecondary} textAlign="center" mb="$5">
+                  <Text fontSize="$sm" color={colors.textSecondary} textAlign="center" mb="$2">
                     Tap the checkmark above to process this receipt
                   </Text>
+                  <Text fontSize="$xs" color={colors.textMuted} textAlign="center" mb="$3">
+                    Powered by Gemini AI with OCR fallback
+                  </Text>
+                  {savedImageUri && (
+                    <HStack alignItems="center" mt="$1">
+                      <Icon name="save" size={14} color={colors.success} />
+                      <Text fontSize="$xs" color={colors.success} ml="$1">Image saved</Text>
+                    </HStack>
+                  )}
                 </VStack>
               )}
             </Box>
@@ -294,6 +456,7 @@ const CaptureScreen = ({ navigation }) => {
           onSave={handleSaveExpense}
           categories={categories}
           initialData={ocrData}
+          receiptImageUri={savedImageUri || capturedImage?.uri}
         />
       )}
     </Box>

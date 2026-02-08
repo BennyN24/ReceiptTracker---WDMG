@@ -80,7 +80,6 @@ const OCRService = {
   async _tryCloudOCR(imageUri) {
     try {
       if (!GoogleCloudVisionConfig.isConfigured()) {
-        console.warn('Google Cloud Vision API not configured');
         return null;
       }
 

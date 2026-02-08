@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Alert,
   Modal,
+  Image,
 } from 'react-native';
 import {
   Portal,
@@ -20,7 +21,7 @@ import Icon from '@expo/vector-icons/MaterialIcons';
 import DatePicker from 'react-native-date-picker';
 import { colors } from '../styles/theme';
 
-const AddExpenseModal = ({ onClose, onSave, categories, initialData }) => {
+const AddExpenseModal = ({ onClose, onSave, categories, initialData, receiptImageUri }) => {
   const [vendor, setVendor] = useState(initialData?.vendor || '');
   const [amount, setAmount] = useState(
     initialData?.amount ? String(initialData.amount) : ''
@@ -34,6 +35,26 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData }) => {
   const [isRecurring, setIsRecurring] = useState(initialData?.isRecurring || false);
   const [frequency, setFrequency] = useState(initialData?.frequency || 'monthly');
   const [errors, setErrors] = useState({});
+
+  // Sync form fields when initialData changes (e.g., when OCR/Gemini data arrives)
+  useEffect(() => {
+    if (initialData) {
+      console.log('Syncing initialData to form fields:', initialData);
+      if (initialData.vendor) setVendor(initialData.vendor);
+      if (initialData.amount) setAmount(String(initialData.amount));
+      if (initialData.description) setDescription(initialData.description);
+      if (initialData.category) setSelectedCategory(initialData.category);
+      if (initialData.date) {
+        try {
+          setDate(new Date(initialData.date + 'T00:00:00'));
+        } catch (e) {
+          console.warn('Invalid date in initialData:', initialData.date);
+        }
+      }
+      if (initialData.isRecurring !== undefined) setIsRecurring(initialData.isRecurring);
+      if (initialData.frequency) setFrequency(initialData.frequency);
+    }
+  }, [initialData]);
 
   const frequencyOptions = [
     { label: 'Daily', value: 'daily' },
@@ -112,6 +133,31 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData }) => {
         </HStack>
 
         <ScrollView flex={1} p="$4" showsVerticalScrollIndicator={false}>
+          {/* Receipt Image Preview */}
+          {receiptImageUri && (
+            <VStack mb="$6">
+              <HStack alignItems="center" justifyContent="space-between" mb="$2">
+                <Text fontWeight="$semibold" fontSize="$md" color={colors.text}>Receipt Image</Text>
+                <HStack alignItems="center">
+                  <Icon name="check-circle" size={16} color={colors.success} />
+                  <Text fontSize="$xs" color={colors.success} ml="$1">Saved</Text>
+                </HStack>
+              </HStack>
+              <Box
+                borderRadius="$lg"
+                borderWidth={1}
+                borderColor={colors.border}
+                overflow="hidden"
+                bg={colors.backgroundSecondary}
+              >
+                <Image
+                  source={{ uri: receiptImageUri }}
+                  style={{ width: '100%', height: 200, resizeMode: 'contain' }}
+                />
+              </Box>
+            </VStack>
+          )}
+
           {/* Vendor Input */}
           <VStack mb="$6">
             <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$2">Vendor</Text>
