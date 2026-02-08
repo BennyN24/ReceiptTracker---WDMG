@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import generateSecureId from '../utils/generateSecureId';
 
 const RECURRING_EXPENSES_KEY = '@receipt_tracker_recurring_expenses';
 
@@ -8,7 +9,7 @@ const RecurringExpenseService = {
    */
   async createRecurringExpense(recurringExpense) {
     try {
-      const id = `recurring_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const id = await generateSecureId('recurring');
 
       const newRecurringExpense = {
         id,

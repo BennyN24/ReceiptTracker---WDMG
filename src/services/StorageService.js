@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import { getDefaultPresetBudgets } from '../utils/PresetBudgets';
+import generateSecureId from '../utils/generateSecureId';
 
 const STORAGE_KEYS = {
   EXPENSES: '@receipt_tracker_expenses',
@@ -158,7 +159,7 @@ export const StorageService = {
       const expenses = await this.getExpenses();
       const newExpense = {
         ...expense,
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        id: await generateSecureId('exp'),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -265,7 +266,7 @@ export const StorageService = {
       const budgets = await this.getBudgets();
       const newBudget = {
         ...budget,
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        id: await generateSecureId('bgt'),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -347,7 +348,7 @@ export const StorageService = {
       
       const newBudget = {
         ...presetBudget,
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        id: await generateSecureId('bgt'),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -491,24 +492,95 @@ export const StorageService = {
       if (!data || typeof data !== 'object') {
         throw new Error('Invalid import data');
       }
-      
+
       const { expenses, budgets, categories, settings } = data;
-      
+      const importErrors = [];
+
+      // Validate and filter expenses individually
       if (expenses && Array.isArray(expenses)) {
-        await this.saveExpenses(expenses);
+        const validExpenses = expenses.filter((expense, index) => {
+          try {
+            validateExpenseData(expense);
+            if (typeof expense.id !== 'string' || expense.id.trim() === '') {
+              throw new Error('Missing or invalid id');
+            }
+            return true;
+          } catch (err) {
+            importErrors.push(`Expense[${index}]: ${err.message}`);
+            return false;
+          }
+        });
+        await this.saveExpenses(validExpenses);
       }
-      
+
+      // Validate and filter budgets individually
       if (budgets && Array.isArray(budgets)) {
-        await this.saveBudgets(budgets);
+        const validBudgets = budgets.filter((budget, index) => {
+          try {
+            validateBudgetData(budget);
+            if (typeof budget.id !== 'string' || budget.id.trim() === '') {
+              throw new Error('Missing or invalid id');
+            }
+            return true;
+          } catch (err) {
+            importErrors.push(`Budget[${index}]: ${err.message}`);
+            return false;
+          }
+        });
+        await this.saveBudgets(validBudgets);
       }
-      
+
+      // Validate categories structure
       if (categories && Array.isArray(categories)) {
-        await this.saveCategories(categories);
+        const validCategories = categories.filter((cat, index) => {
+          if (!cat || typeof cat !== 'object') {
+            importErrors.push(`Category[${index}]: must be an object`);
+            return false;
+          }
+          if (!cat.id || typeof cat.id !== 'string') {
+            importErrors.push(`Category[${index}]: missing or invalid id`);
+            return false;
+          }
+          if (!cat.name || typeof cat.name !== 'string' || cat.name.trim() === '') {
+            importErrors.push(`Category[${index}]: missing or invalid name`);
+            return false;
+          }
+          return true;
+        });
+        await this.saveCategories(validCategories);
       }
-      
-      if (settings && typeof settings === 'object') {
-        await this.saveSettings(settings);
+
+      // Validate settings structure with allowed keys only
+      if (settings && typeof settings === 'object' && !Array.isArray(settings)) {
+        const allowedKeys = [
+          'monthlyBudget', 'currency', 'notifications',
+          'darkMode', 'biometricAuth', 'autoBackup', 'passcodeLock',
+        ];
+        const sanitizedSettings = {};
+        const defaults = this.getDefaultSettings();
+
+        for (const key of allowedKeys) {
+          if (key in settings) {
+            const value = settings[key];
+            const expectedType = typeof defaults[key];
+            if (typeof value === expectedType) {
+              sanitizedSettings[key] = value;
+            } else {
+              importErrors.push(`Settings.${key}: expected ${expectedType}, got ${typeof value}`);
+              sanitizedSettings[key] = defaults[key];
+            }
+          } else {
+            sanitizedSettings[key] = defaults[key];
+          }
+        }
+        await this.saveSettings(sanitizedSettings);
       }
+
+      if (importErrors.length > 0) {
+        console.warn('Import completed with validation warnings:', importErrors);
+      }
+
+      return { success: true, warnings: importErrors };
     } catch (error) {
       console.error('Error importing data:', error);
       throw new Error(`Failed to import data: ${error.message}`);

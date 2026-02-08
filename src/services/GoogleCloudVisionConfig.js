@@ -1,5 +1,19 @@
+/**
+ * Google Cloud Vision API Configuration
+ *
+ * SECURITY NOTE: The API key MUST be provided via the GOOGLE_CLOUD_API_KEY
+ * environment variable. Never hardcode API keys in source code.
+ *
+ * For production deployments, consider routing OCR requests through a backend
+ * proxy server to keep the API key entirely server-side and prevent abuse.
+ *
+ * Setup:
+ *   1. Create a .env file in the project root (already in .gitignore)
+ *   2. Add: GOOGLE_CLOUD_API_KEY=your_api_key_here
+ *   3. Restart the Expo dev server
+ */
 const GoogleCloudVisionConfig = {
-  apiKey: process.env.GOOGLE_CLOUD_API_KEY || 'AIzaSyBbUbzsZYbG7IhB9APCtIM6Kn2qDQ0-8mQ',
+  apiKey: process.env.GOOGLE_CLOUD_API_KEY || null,
   endpoint: 'https://vision.googleapis.com/v1/images:annotate',
   
   getHeaders() {
@@ -34,11 +48,18 @@ const GoogleCloudVisionConfig = {
   },
 
   getUrl() {
+    if (!this.apiKey) {
+      console.warn(
+        'Google Cloud Vision API key is not configured. ' +
+        'Set GOOGLE_CLOUD_API_KEY in your .env file.'
+      );
+      return null;
+    }
     return `${this.endpoint}?key=${this.apiKey}`;
   },
 
   isConfigured() {
-    return !!this.apiKey;
+    return !!this.apiKey && this.apiKey.length > 0;
   },
 };
 
