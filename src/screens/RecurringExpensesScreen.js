@@ -20,6 +20,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import RecurringExpenseService from '../services/RecurringExpenseService';
 import StorageService from '../services/StorageService';
 import { colors } from '../styles/theme';
+import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 
 const RecurringExpensesScreen = () => {
   const [recurringExpenses, setRecurringExpenses] = useState([]);
@@ -40,6 +41,8 @@ const RecurringExpensesScreen = () => {
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerMode, setDatePickerMode] = useState('start');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const categories = [
     'Food & Dining',
@@ -110,24 +113,31 @@ const RecurringExpensesScreen = () => {
   };
 
   const handleDeleteExpense = (id) => {
-    Alert.alert(
-      'Delete Recurring Expense',
-      'Are you sure you want to delete this recurring expense?',
-      [
-        { text: 'Cancel', onPress: () => {} },
-        {
-          text: 'Delete',
-          onPress: async () => {
-            try {
-              await RecurringExpenseService.deleteRecurringExpense(id);
-              await loadRecurringExpenses();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete recurring expense');
-            }
-          },
-        },
-      ]
-    );
+    console.log('handleDeleteExpense called with id:', id);
+    setDeletingId(id);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    console.log('Delete confirmed, deleting id:', deletingId);
+    try {
+      await RecurringExpenseService.deleteRecurringExpense(deletingId);
+      await loadRecurringExpenses();
+      console.log('Delete successful');
+      setShowDeleteModal(false);
+      setDeletingId(null);
+    } catch (error) {
+      console.error('Delete error:', error);
+      Alert.alert('Error', 'Failed to delete recurring expense');
+      setShowDeleteModal(false);
+      setDeletingId(null);
+    }
+  };
+
+  const cancelDelete = () => {
+    console.log('Delete cancelled');
+    setShowDeleteModal(false);
+    setDeletingId(null);
   };
 
   const handleEditExpense = (expense) => {
@@ -190,24 +200,34 @@ const RecurringExpensesScreen = () => {
         <Text fontSize="$sm" color={colors.textSecondary} fontStyle="italic" my="$2">{item.notes}</Text>
       )}
 
-      <HStack space="sm" mt="$3">
+      <HStack space="$md" mt="$3">
         <Pressable
-          onPress={() => handleEditExpense(item)}
+          onPress={(e) => {
+            e?.stopPropagation?.();
+            handleEditExpense(item);
+          }}
           borderWidth={1}
           borderColor={colors.primary}
           borderRadius="$lg"
           px="$4"
           py="$2"
+          flex={1}
+          alignItems="center"
         >
           <Text color={colors.primary} fontWeight="$medium" fontSize="$sm">Edit</Text>
         </Pressable>
         <Pressable
-          onPress={() => handleDeleteExpense(item.id)}
+          onPress={(e) => {
+            e?.stopPropagation?.();
+            handleDeleteExpense(item.id);
+          }}
           borderWidth={1}
           borderColor={colors.error}
           borderRadius="$lg"
           px="$4"
           py="$2"
+          flex={1}
+          alignItems="center"
         >
           <Text color={colors.error} fontWeight="$medium" fontSize="$sm">Delete</Text>
         </Pressable>
@@ -279,24 +299,24 @@ const RecurringExpensesScreen = () => {
             </Pressable>
           </HStack>
 
-          <ScrollView flex={1} p="$4">
+          <ScrollView flex={1} bg={colors.white} p="$4">
             <VStack mb="$4">
               <Text fontWeight="$medium" fontSize="$sm" color={colors.text} mb="$2">Vendor</Text>
-              <Input borderRadius="$lg" borderColor={colors.border}>
+              <Input borderRadius="$lg" borderColor={colors.border} bg={colors.white}>
                 <InputField placeholder="Vendor" value={formData.vendor} onChangeText={text => setFormData({ ...formData, vendor: text })} fontSize="$md" />
               </Input>
             </VStack>
 
             <VStack mb="$4">
               <Text fontWeight="$medium" fontSize="$sm" color={colors.text} mb="$2">Amount</Text>
-              <Input borderRadius="$lg" borderColor={colors.border}>
+              <Input borderRadius="$lg" borderColor={colors.border} bg={colors.white}>
                 <InputField placeholder="0.00" value={formData.amount} onChangeText={text => setFormData({ ...formData, amount: text })} keyboardType="decimal-pad" fontSize="$md" />
               </Input>
             </VStack>
 
             <VStack mb="$4">
               <Text fontWeight="$medium" fontSize="$sm" color={colors.text} mb="$2">Category</Text>
-              <HStack flexWrap="wrap" space="sm">
+              <HStack flexWrap="wrap" space="$sm">
                 {categories.map(cat => (
                   <Pressable
                     key={cat}
@@ -317,7 +337,7 @@ const RecurringExpensesScreen = () => {
 
             <VStack mb="$4">
               <Text fontWeight="$medium" fontSize="$sm" color={colors.text} mb="$2">Frequency</Text>
-              <HStack space="sm" flexWrap="wrap">
+              <HStack space="$sm" flexWrap="wrap">
                 {frequencyOptions.map(opt => (
                   <Pressable
                     key={opt.value}
@@ -366,7 +386,7 @@ const RecurringExpensesScreen = () => {
 
             <VStack mb="$4">
               <Text fontWeight="$medium" fontSize="$sm" color={colors.text} mb="$2">Notes (Optional)</Text>
-              <Input borderRadius="$lg" borderColor={colors.border} h={80}>
+              <Input borderRadius="$lg" borderColor={colors.border} bg={colors.white} h={80}>
                 <InputField placeholder="Notes" value={formData.notes} onChangeText={text => setFormData({ ...formData, notes: text })} fontSize="$md" multiline numberOfLines={3} textAlignVertical="top" />
               </Input>
             </VStack>
@@ -382,6 +402,14 @@ const RecurringExpensesScreen = () => {
           onChange={handleDateChange}
         />
       )}
+
+      <DeleteConfirmationModal
+        visible={showDeleteModal}
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+        title="Delete Recurring Expense"
+        message="Are you sure you want to delete this recurring expense?"
+      />
     </Box>
   );
 };
