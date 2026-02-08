@@ -29,6 +29,7 @@ const BudgetsScreen = ({ navigation }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [availablePresets, setAvailablePresets] = useState([]);
   const [newBudget, setNewBudget] = useState({
     name: '',
     amount: '',
@@ -41,15 +42,17 @@ const BudgetsScreen = ({ navigation }) => {
 
   const loadData = async () => {
     try {
-      const [budgetsData, expensesData, settingsData] = await Promise.all([
+      const [budgetsData, expensesData, settingsData, presetsData] = await Promise.all([
         StorageService.getBudgets(),
         StorageService.getExpenses(),
         StorageService.getSettings(),
+        StorageService.getAvailablePresetBudgets(),
       ]);
       
       setBudgets(budgetsData);
       setExpenses(expensesData);
       setSettings(settingsData);
+      setAvailablePresets(presetsData);
     } catch (error) {
       Alert.alert('Error', 'Failed to load data');
     } finally {
@@ -149,6 +152,15 @@ const BudgetsScreen = ({ navigation }) => {
     );
   };
 
+  const handleAddPresetBudget = async (categoryId) => {
+    try {
+      await StorageService.addPresetBudget(categoryId);
+      await loadData();
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to add preset budget');
+    }
+  };
+
   const formatCurrency = (amount, currency = null) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -207,6 +219,43 @@ const BudgetsScreen = ({ navigation }) => {
     };
   }, [getBudgetSpent, getBudgetPercentage, getProgressColor, formatCurrency, handleDeleteBudget]);
 
+  const renderPresetBudgets = () => {
+    if (availablePresets.length === 0) return null;
+
+    return (
+      <Box mb="$6">
+        <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$3" px="$4">Quick Add Preset Budgets</Text>
+        <VStack space="sm" px="$4">
+          {availablePresets.map((preset) => (
+            <Pressable
+              key={preset.categoryId}
+              onPress={() => handleAddPresetBudget(preset.categoryId)}
+              bg={colors.white}
+              borderRadius="$lg"
+              p="$4"
+              flexDirection="row"
+              justifyContent="space-between"
+              alignItems="center"
+              borderWidth={1}
+              borderColor={colors.border}
+              shadowColor={colors.black}
+              shadowOffset={{ width: 0, height: 1 }}
+              shadowOpacity={0.06}
+              shadowRadius={4}
+              elevation={2}
+            >
+              <VStack flex={1}>
+                <Text fontWeight="$semibold" fontSize="$md" color={colors.text}>{preset.name}</Text>
+                <Text fontSize="$sm" color={colors.textSecondary}>{formatCurrency(preset.amount)}/month</Text>
+              </VStack>
+              <Icon name="add-circle-outline" size={24} color={colors.primary} />
+            </Pressable>
+          ))}
+        </VStack>
+      </Box>
+    );
+  };
+
   const renderEmptyState = () => (
     <VStack alignItems="center" justifyContent="center" py="$16" px="$8">
       <Icon name="account-balance-wallet" size={64} color={colors.textMuted} />
@@ -256,9 +305,18 @@ const BudgetsScreen = ({ navigation }) => {
         }
       >
         {budgets.length === 0 ? (
-          renderEmptyState()
+          <>
+            {renderPresetBudgets()}
+            {availablePresets.length === 0 && renderEmptyState()}
+          </>
         ) : (
-          budgets.map(renderBudgetItem)
+          <>
+            {renderPresetBudgets()}
+            <Box mb="$4">
+              <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$3">Your Budgets</Text>
+            </Box>
+            {budgets.map(renderBudgetItem)}
+          </>
         )}
         
         <Box h={80} />
