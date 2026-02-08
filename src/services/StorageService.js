@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
+import { getDefaultPresetBudgets } from '../utils/PresetBudgets';
 
 const STORAGE_KEYS = {
   EXPENSES: '@receipt_tracker_expenses',
@@ -294,6 +295,55 @@ export const StorageService = {
     } catch (error) {
       console.error('Error deleting budget:', error);
       throw new Error(`Failed to delete budget: ${error.message}`);
+    }
+  },
+
+  getDefaultPresetBudgets() {
+    return getDefaultPresetBudgets();
+  },
+
+  async addPresetBudget(categoryId) {
+    try {
+      const presets = getDefaultPresetBudgets();
+      const presetBudget = presets.find(b => b.categoryId === categoryId);
+      
+      if (!presetBudget) {
+        throw new Error('No preset budget found for this category');
+      }
+      
+      const budgets = await this.getBudgets();
+      const budgetExists = budgets.some(b => b.categoryId === categoryId);
+      
+      if (budgetExists) {
+        throw new Error('Budget already exists for this category');
+      }
+      
+      const newBudget = {
+        ...presetBudget,
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      
+      await this.saveBudgets([...budgets, newBudget]);
+      return newBudget;
+    } catch (error) {
+      console.error('Error adding preset budget:', error);
+      throw new Error(`Failed to add preset budget: ${error.message}`);
+    }
+  },
+
+  async getAvailablePresetBudgets() {
+    try {
+      const budgets = await this.getBudgets();
+      const presets = getDefaultPresetBudgets();
+      
+      return presets.filter(preset => 
+        !budgets.some(budget => budget.categoryId === preset.categoryId)
+      );
+    } catch (error) {
+      console.error('Error getting available preset budgets:', error);
+      throw new Error(`Failed to get available preset budgets: ${error.message}`);
     }
   },
 

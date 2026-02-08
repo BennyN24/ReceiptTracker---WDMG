@@ -212,6 +212,77 @@ const DashboardScreen = ({ navigation }) => {
         </Box>
       </HStack>
 
+      {/* Recent Expenses */}
+      <Box mx="$5" mb="$5" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 2 }} shadowOpacity={0.08} shadowRadius={8} elevation={3}>
+        <HStack justifyContent="space-between" alignItems="center" mb="$4">
+          <Text fontWeight="$semibold" fontSize="$lg" color={colors.text}>Recent Expenses</Text>
+          <Pressable onPress={() => navigation.navigate('Expenses')}>
+            <Text color={colors.primary} fontSize="$sm" fontWeight="$medium">View All</Text>
+          </Pressable>
+        </HStack>
+        
+        <Divider mb="$4" />
+        
+        {recentExpenses.length === 0 ? (
+          <VStack alignItems="center" py="$8">
+            <Icon name="receipt" size={48} color={colors.textMuted} />
+            <Text fontSize="$md" color={colors.textSecondary} mt="$3" mb="$5">No expenses yet</Text>
+            <Pressable
+              onPress={() => navigation.navigate('Capture')}
+              bg={colors.primary}
+              borderRadius="$lg"
+              px="$6"
+              py="$3"
+            >
+              <Text color={colors.white} fontWeight="$semibold">Add Your First Expense</Text>
+            </Pressable>
+          </VStack>
+        ) : (
+          recentExpenses.map((expense) => (
+            <HStack key={expense.id} justifyContent="space-between" alignItems="center" py="$3" borderBottomWidth={1} borderBottomColor={colors.borderLight}>
+              <VStack flex={1}>
+                <Text fontWeight="$medium" fontSize="$md" color={colors.text} mb="$1">{expense.vendor}</Text>
+                <Text fontSize="$sm" color={colors.textSecondary}>{formatDate(expense.date)}</Text>
+              </VStack>
+              <Text fontWeight="$semibold" fontSize="$md" color={colors.error}>
+                {formatCurrency(expense.amount)}
+              </Text>
+            </HStack>
+          ))
+        )}
+      </Box>
+
+      {/* Quick Actions */}
+      <HStack px="$5" pb="$5" space="md">
+        <Pressable
+          onPress={() => navigation.navigate('Capture')}
+          bg={colors.primary}
+          borderRadius="$lg"
+          py="$3.5"
+          flex={1}
+          alignItems="center"
+          flexDirection="row"
+          justifyContent="center"
+        >
+          <Icon name="camera-alt" size={20} color={colors.white} />
+          <Text color={colors.white} fontWeight="$semibold" fontSize="$md" ml="$2">Capture Receipt</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => navigation.navigate('Expenses')}
+          borderWidth={1.5}
+          borderColor={colors.primary}
+          borderRadius="$lg"
+          py="$3.5"
+          flex={1}
+          alignItems="center"
+          flexDirection="row"
+          justifyContent="center"
+        >
+          <Icon name="add" size={20} color={colors.primary} />
+          <Text color={colors.primary} fontWeight="$semibold" fontSize="$md" ml="$2">Add Expense</Text>
+        </Pressable>
+      </HStack>
+
       {/* Spending by Category - Pie Chart */}
       {categoryChartData.length > 0 && (
         <Box mx="$5" mb="$5" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 2 }} shadowOpacity={0.08} shadowRadius={8} elevation={3}>
@@ -291,74 +362,6 @@ const DashboardScreen = ({ navigation }) => {
         </Box>
       )}
 
-      {/* Recent Expenses */}
-      <Box mx="$5" mb="$5" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 2 }} shadowOpacity={0.08} shadowRadius={8} elevation={3}>
-        <HStack justifyContent="space-between" alignItems="center" mb="$4">
-          <Text fontWeight="$semibold" fontSize="$lg" color={colors.text}>Recent Expenses</Text>
-          <Pressable onPress={() => navigation.navigate('Expenses')}>
-            <Text color={colors.primary} fontSize="$sm" fontWeight="$medium">View All</Text>
-          </Pressable>
-        </HStack>
-        
-        <Divider mb="$4" />
-        
-        {recentExpenses.length === 0 ? (
-          <VStack alignItems="center" py="$8">
-            <Icon name="receipt" size={48} color={colors.textMuted} />
-            <Text fontSize="$md" color={colors.textSecondary} mt="$3" mb="$5">No expenses yet</Text>
-            <Pressable
-              onPress={() => navigation.navigate('Capture')}
-              bg={colors.primary}
-              borderRadius="$lg"
-              px="$6"
-              py="$3"
-            >
-              <Text color={colors.white} fontWeight="$semibold">Add Your First Expense</Text>
-            </Pressable>
-          </VStack>
-        ) : (
-          recentExpenses.map((expense) => (
-            <HStack key={expense.id} justifyContent="space-between" alignItems="center" py="$3" borderBottomWidth={1} borderBottomColor={colors.borderLight}>
-              <VStack flex={1}>
-                <Text fontWeight="$medium" fontSize="$md" color={colors.text} mb="$1">{expense.vendor}</Text>
-                <Text fontSize="$sm" color={colors.textSecondary}>{formatDate(expense.date)}</Text>
-              </VStack>
-              <Text fontWeight="$semibold" fontSize="$md" color={colors.error}>
-                {formatCurrency(expense.amount)}
-              </Text>
-            </HStack>
-          ))
-        )}
-      </Box>
-
-      {/* Quick Actions */}
-      <VStack px="$5" pb="$5" space="md">
-        <Pressable
-          onPress={() => navigation.navigate('Capture')}
-          bg={colors.primary}
-          borderRadius="$lg"
-          py="$3.5"
-          alignItems="center"
-          flexDirection="row"
-          justifyContent="center"
-        >
-          <Icon name="camera-alt" size={20} color={colors.white} />
-          <Text color={colors.white} fontWeight="$semibold" fontSize="$md" ml="$2">Capture Receipt</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => navigation.navigate('Expenses')}
-          borderWidth={1.5}
-          borderColor={colors.primary}
-          borderRadius="$lg"
-          py="$3.5"
-          alignItems="center"
-          flexDirection="row"
-          justifyContent="center"
-        >
-          <Icon name="add" size={20} color={colors.primary} />
-          <Text color={colors.primary} fontWeight="$semibold" fontSize="$md" ml="$2">Add Expense</Text>
-        </Pressable>
-      </VStack>
     </ScrollView>
   );
 };
