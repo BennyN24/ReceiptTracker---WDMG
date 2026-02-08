@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Alert,
+  Modal,
 } from 'react-native';
 import {
   Portal,
@@ -16,7 +17,7 @@ import {
   InputField,
 } from '@gluestack-ui/themed';
 import Icon from '@expo/vector-icons/MaterialIcons';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DatePicker from 'react-native-date-picker';
 import { colors } from '../styles/theme';
 
 const AddExpenseModal = ({ onClose, onSave, categories, initialData }) => {
@@ -69,11 +70,11 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData }) => {
     onSave(expenseData);
   };
 
-  const handleDateChange = (event, selectedDate) => {
-    setShowDatePicker(false);
+  const handleDateChange = (selectedDate) => {
     if (selectedDate) {
       setDate(selectedDate);
     }
+    setShowDatePicker(false);
   };
 
   const formatDate = (date) => {
@@ -91,7 +92,7 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData }) => {
           <Pressable onPress={onClose} p="$2">
             <Icon name="close" size={24} color={colors.text} />
           </Pressable>
-          <Text fontWeight="$semibold" fontSize="$lg" color={colors.text}>Add Expense</Text>
+          <Text fontWeight="$semibold" fontSize="$lg" color={colors.text}>{initialData ? 'Edit Expense' : 'Add Expense'}</Text>
           <Pressable onPress={handleSave} p="$2">
             <Icon name="check" size={24} color={colors.primary} />
           </Pressable>
@@ -236,15 +237,34 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData }) => {
         </ScrollView>
 
         {/* Date Picker Modal */}
-        {showDatePicker && (
-          <DateTimePicker
-            value={date}
-            mode="date"
-            display="default"
-            onChange={handleDateChange}
-            maximumDate={new Date()}
-          />
-        )}
+        <Modal
+          visible={showDatePicker}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowDatePicker(false)}
+        >
+          <Box flex={1} bg="rgba(0, 0, 0, 0.5)" justifyContent="flex-end">
+            <Box bg={colors.white} borderTopLeftRadius="$2xl" borderTopRightRadius="$2xl" p="$4">
+              <HStack justifyContent="space-between" alignItems="center" mb="$4">
+                <Pressable onPress={() => setShowDatePicker(false)}>
+                  <Text color={colors.textSecondary} fontWeight="$medium">Cancel</Text>
+                </Pressable>
+                <Text fontWeight="$semibold" fontSize="$lg" color={colors.text}>Select Date</Text>
+                <Pressable onPress={() => handleDateChange(date)}>
+                  <Text color={colors.primary} fontWeight="$semibold">Done</Text>
+                </Pressable>
+              </HStack>
+              <Box alignItems="center" py="$4">
+                <DatePicker
+                  date={date}
+                  onDateChange={setDate}
+                  mode="date"
+                  maximumDate={new Date()}
+                />
+              </Box>
+            </Box>
+          </Box>
+        </Modal>
       </Box>
     </Portal>
   );

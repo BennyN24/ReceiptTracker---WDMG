@@ -5,6 +5,7 @@ import {
   Alert,
   RefreshControl,
   Picker,
+  Platform,
 } from 'react-native';
 import {
   Box,
@@ -22,6 +23,7 @@ import {
 } from '@gluestack-ui/themed';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import AddExpenseModal from '../components/AddExpenseModal';
+import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import { StorageService } from '../services/StorageService';
 import { colors } from '../styles/theme';
 
@@ -33,6 +35,9 @@ const ExpensesScreen = ({ navigation }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [sortBy, setSortBy] = useState('newest');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingExpense, setEditingExpense] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingExpenseId, setDeletingExpenseId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [settings, setSettings] = useState({ currency: 'USD' });
@@ -105,34 +110,43 @@ const ExpensesScreen = ({ navigation }) => {
 
   const handleAddExpense = async (expenseData) => {
     try {
-      await StorageService.addExpense(expenseData);
+      if (editingExpense) {
+        await StorageService.updateExpense(editingExpense.id, expenseData);
+      } else {
+        await StorageService.addExpense(expenseData);
+      }
       await loadData();
       setShowAddModal(false);
+      setEditingExpense(null);
     } catch (error) {
-      Alert.alert('Error', 'Failed to add expense');
+      Alert.alert('Error', editingExpense ? 'Failed to update expense' : 'Failed to add expense');
     }
   };
 
+  const handleEditExpense = (expense) => {
+    setEditingExpense(expense);
+    setShowAddModal(true);
+  };
+
   const handleDeleteExpense = (expenseId) => {
-    Alert.alert(
-      'Delete Expense',
-      'Are you sure you want to delete this expense?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await StorageService.deleteExpense(expenseId);
-              await loadData();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete expense');
-            }
-          },
-        },
-      ]
-    );
+    setDeletingExpenseId(expenseId);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      await StorageService.deleteExpense(deletingExpenseId);
+      await loadData();
+      setShowDeleteModal(false);
+      setDeletingExpenseId(null);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to delete expense');
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setDeletingExpenseId(null);
   };
 
   const clearFilters = () => {
@@ -168,25 +182,33 @@ const ExpensesScreen = ({ navigation }) => {
   };
 
   const renderExpenseItem = ({ item }) => (
-    <Box mb="$3" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
-      <HStack justifyContent="space-between" alignItems="flex-start">
-        <VStack flex={1}>
-          <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$1">{item.vendor}</Text>
-          <Text fontSize="$sm" color={colors.textSecondary}>{formatDate(item.date)}</Text>
-        </VStack>
-        <VStack alignItems="flex-end">
-          <Text fontWeight="$bold" fontSize="$md" color={colors.error} mb="$1">{formatCurrency(item.amount)}</Text>
-          <Pressable onPress={() => handleDeleteExpense(item.id)} p="$1">
-            <Icon name="delete" size={20} color={colors.error} />
-          </Pressable>
-        </VStack>
-      </HStack>
-      <Box mt="$3">
-        <Box alignSelf="flex-start" bg={getCategoryColor(item.category)} borderRadius="$full" px="$3" py="$1">
-          <Text color={colors.white} fontSize="$xs" fontWeight="$medium">{getCategoryName(item.category)}</Text>
+    <Pressable onPress={() => handleEditExpense(item)}>
+      <Box mb="$3" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
+        <HStack justifyContent="space-between" alignItems="flex-start">
+          <VStack flex={1}>
+            <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$1">{item.vendor}</Text>
+            <Text fontSize="$sm" color={colors.textSecondary}>{formatDate(item.date)}</Text>
+          </VStack>
+          <VStack alignItems="flex-end">
+            <Text fontWeight="$bold" fontSize="$md" color={colors.error} mb="$1">{formatCurrency(item.amount)}</Text>
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                handleDeleteExpense(item.id);
+              }}
+              p="$1"
+            >
+              <Icon name="delete" size={20} color={colors.error} />
+            </Pressable>
+          </VStack>
+        </HStack>
+        <Box mt="$3">
+          <Box alignSelf="flex-start" bg={getCategoryColor(item.category)} borderRadius="$full" px="$3" py="$1">
+            <Text color={colors.white} fontSize="$xs" fontWeight="$medium">{getCategoryName(item.category)}</Text>
+          </Box>
         </Box>
       </Box>
-    </Box>
+    </Pressable>
   );
 
   const renderEmptyState = () => (
@@ -318,14 +340,27 @@ const ExpensesScreen = ({ navigation }) => {
         <Icon name="add" size={28} color={colors.white} />
       </Pressable>
 
-      {/* Add Expense Modal */}
+      {/* Add/Edit Expense Modal */}
       {showAddModal && (
         <AddExpenseModal
-          onClose={() => setShowAddModal(false)}
+          onClose={() => {
+            setShowAddModal(false);
+            setEditingExpense(null);
+          }}
           onSave={handleAddExpense}
           categories={categories}
+          initialData={editingExpense}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        visible={showDeleteModal}
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        title="Delete Expense"
+        message="Are you sure you want to delete this expense? This action cannot be undone."
+      />
     </Box>
   );
 };
