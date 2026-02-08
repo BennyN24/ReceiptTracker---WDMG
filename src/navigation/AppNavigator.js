@@ -1,10 +1,12 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
+import { View } from 'react-native';
 import Icon from '@expo/vector-icons/MaterialIcons';
 
 import DashboardScreen from '../screens/DashboardScreen';
 import ExpensesScreen from '../screens/ExpensesScreen';
+import RecurringExpensesScreen from '../screens/RecurringExpensesScreen';
 import CaptureScreen from '../screens/CaptureScreen';
 import BudgetsScreen from '../screens/BudgetsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
@@ -19,6 +21,11 @@ const ExpensesStack = () => (
       name="ExpensesList" 
       component={ExpensesScreen}
       options={{ headerShown: false }}
+    />
+    <Stack.Screen 
+      name="RecurringExpenses" 
+      component={RecurringExpensesScreen}
+      options={{ title: 'Recurring Expenses' }}
     />
   </Stack.Navigator>
 );
@@ -45,7 +52,20 @@ const AppNavigator = () => {
           } else if (route.name === 'Expenses') {
             iconName = 'receipt';
           } else if (route.name === 'Capture') {
-            iconName = 'add-circle';
+            iconName = 'photo-camera';
+            return (
+              <View style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                backgroundColor: '#16a34a',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginBottom: 8,
+              }}>
+                <Icon name={iconName} size={32} color="#ffffff" />
+              </View>
+            );
           } else if (route.name === 'Budgets') {
             iconName = 'account-balance-wallet';
           } else if (route.name === 'Settings') {
@@ -87,7 +107,6 @@ const AppNavigator = () => {
       <Tab.Screen 
         name="Capture" 
         component={CaptureScreen}
-        options={{ title: 'Capture' }}
       />
       <Tab.Screen 
         name="Budgets" 

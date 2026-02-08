@@ -31,7 +31,17 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData }) => {
     initialData?.date ? new Date(initialData.date + 'T00:00:00') : new Date()
   );
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(initialData?.isRecurring || false);
+  const [frequency, setFrequency] = useState(initialData?.frequency || 'monthly');
   const [errors, setErrors] = useState({});
+
+  const frequencyOptions = [
+    { label: 'Weekly', value: 'weekly' },
+    { label: 'Bi-weekly', value: 'biweekly' },
+    { label: 'Monthly', value: 'monthly' },
+    { label: 'Quarterly', value: 'quarterly' },
+    { label: 'Yearly', value: 'yearly' },
+  ];
 
   const validateForm = () => {
     const newErrors = {};
@@ -65,6 +75,8 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData }) => {
       description: description.trim(),
       category: selectedCategory,
       date: date.toISOString().split('T')[0],
+      isRecurring: isRecurring,
+      frequency: isRecurring ? frequency : null,
     };
 
     onSave(expenseData);
@@ -213,6 +225,58 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData }) => {
               </HStack>
             </Pressable>
           </VStack>
+
+          {/* Recurring Expense Toggle */}
+          <VStack mb="$6">
+            <HStack alignItems="center" justifyContent="space-between">
+              <Text fontWeight="$semibold" fontSize="$md" color={colors.text}>Make this recurring?</Text>
+              <Pressable
+                onPress={() => setIsRecurring(!isRecurring)}
+                bg={isRecurring ? colors.primary : colors.borderLight}
+                borderRadius="$full"
+                w={50}
+                h={28}
+                justifyContent="center"
+                alignItems={isRecurring ? 'flex-end' : 'flex-start'}
+                px="$1"
+              >
+                <Box
+                  w={24}
+                  h={24}
+                  borderRadius="$full"
+                  bg={colors.white}
+                />
+              </Pressable>
+            </HStack>
+          </VStack>
+
+          {/* Frequency Selection (only show if recurring) */}
+          {isRecurring && (
+            <VStack mb="$6">
+              <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$2">Frequency</Text>
+              <HStack flexWrap="wrap" space="sm">
+                {frequencyOptions.map((opt) => (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setFrequency(opt.value)}
+                    bg={frequency === opt.value ? colors.primary : colors.borderLight}
+                    borderRadius="$lg"
+                    px="$3.5"
+                    py="$2"
+                    mb="$2"
+                  >
+                    <Text
+                      fontSize="$sm"
+                      fontWeight="$medium"
+                      color={frequency === opt.value ? colors.white : colors.textSecondary}
+                    >
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </HStack>
+            </VStack>
+          )}
 
           {/* Action Buttons */}
           <VStack mt="$8" space="md">
