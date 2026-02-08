@@ -30,6 +30,7 @@ const screenWidth = Dimensions.get('window').width;
 const DashboardScreen = ({ navigation }) => {
   const [expenses, setExpenses] = useState([]);
   const [budgets, setBudgets] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -40,14 +41,16 @@ const DashboardScreen = ({ navigation }) => {
 
   const loadData = async () => {
     try {
-      const [expensesData, budgetsData, settingsData] = await Promise.all([
+      const [expensesData, budgetsData, categoriesData, settingsData] = await Promise.all([
         StorageService.getExpenses(),
         StorageService.getBudgets(),
+        StorageService.getCategories(),
         StorageService.getSettings(),
       ]);
       
       setExpenses(expensesData);
       setBudgets(budgetsData);
+      setCategories(categoriesData);
       setSettings(settingsData);
     } catch (error) {
       Alert.alert('Error', 'Failed to load data');
@@ -107,15 +110,18 @@ const DashboardScreen = ({ navigation }) => {
 
     const total = byCategory.reduce((sum, item) => sum + item.amount, 0);
 
-    return byCategory.slice(0, 6).map((item, index) => ({
-      name: item.category || 'Other',
-      amount: parseFloat(item.amount.toFixed(2)),
-      percentage: total > 0 ? ((item.amount / total) * 100).toFixed(1) : '0',
-      color: CHART_COLORS[index % CHART_COLORS.length],
-      legendFontColor: '#64748b',
-      legendFontSize: 12,
-    }));
-  }, [expenses]);
+    return byCategory.slice(0, 6).map((item, index) => {
+      const categoryData = categories.find(cat => cat.id === item.category);
+      return {
+        name: categoryData?.name || item.category || 'Other',
+        amount: parseFloat(item.amount.toFixed(2)),
+        percentage: total > 0 ? ((item.amount / total) * 100).toFixed(1) : '0',
+        color: categoryData?.color || CHART_COLORS[index % CHART_COLORS.length],
+        legendFontColor: '#64748b',
+        legendFontSize: 12,
+      };
+    });
+  }, [expenses, categories]);
 
   const monthlyTrendData = useMemo(() => {
     const comparison = AnalyticsService.getMonthOverMonthComparison(expenses, 6);
@@ -169,7 +175,7 @@ const DashboardScreen = ({ navigation }) => {
     >
       {/* Header */}
       <Box px="$5" pt="$10" pb="$4">
-        <Heading size="2xl" color={colors.text} mb="$2">Where Did my Money Go!</Heading>
+        <Heading size="2xl" color={colors.text} mb="$2">Track Expenses</Heading>
         <Text color={colors.textSecondary} fontSize="$md">Welcome back, your finances are on track.</Text>
       </Box>
 
@@ -326,29 +332,36 @@ const DashboardScreen = ({ navigation }) => {
               <Text color={colors.primary} fontSize="$sm" fontWeight="$medium">Details</Text>
             </Pressable>
           </HStack>
-          <BarChart
-            data={monthlyTrendData}
-            width={screenWidth - 56}
-            height={220}
-            yAxisLabel="$"
-            yAxisSuffix=""
-            chartConfig={{
-              backgroundColor: '#ffffff',
-              backgroundGradientFrom: '#ffffff',
-              backgroundGradientTo: '#ffffff',
-              decimalPlaces: 0,
-              color: (opacity = 1) => `rgba(22, 163, 74, ${opacity})`,
-              labelColor: (opacity = 1) => `rgba(100, 116, 139, ${opacity})`,
-              barPercentage: 0.6,
-              propsForBackgroundLines: {
-                strokeDasharray: '4 4',
-                stroke: '#e2e8f0',
-              },
-            }}
-            style={{ borderRadius: 8, marginLeft: -16 }}
-            fromZero
-            showValuesOnTopOfBars
-          />
+          <Box alignItems="center">
+            <BarChart
+              data={monthlyTrendData}
+              width={screenWidth - 80}
+              height={220}
+              yAxisLabel="$"
+              yAxisSuffix=""
+              chartConfig={{
+                backgroundColor: 'transparent',
+                backgroundGradientFrom: '#ffffff',
+                backgroundGradientTo: '#ffffff',
+                decimalPlaces: 0,
+                color: (opacity = 1) => `rgba(22, 163, 74, ${opacity})`,
+                labelColor: (opacity = 1) => `rgba(51, 65, 85, ${opacity})`,
+                barPercentage: 0.6,
+                propsForBackgroundLines: {
+                  strokeDasharray: '4 4',
+                  stroke: '#e2e8f0',
+                  strokeWidth: 1,
+                },
+                propsForLabels: {
+                  fontSize: 12,
+                },
+              }}
+              style={{ borderRadius: 8 }}
+              fromZero
+              showValuesOnTopOfBars
+              withInnerLines={true}
+            />
+          </Box>
         </Box>
       )}
 

@@ -7,6 +7,7 @@ LogBox.ignoreLogs([
   'props.pointerEvents is deprecated',
   'shadow* style props are deprecated',
   'Animated: `useNativeDriver` is not supported',
+  'Invalid DOM property `transform-origin`',
 ]);
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);

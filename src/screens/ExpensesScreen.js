@@ -25,6 +25,7 @@ import Icon from '@expo/vector-icons/MaterialIcons';
 import AddExpenseModal from '../components/AddExpenseModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import { StorageService } from '../services/StorageService';
+import RecurringExpenseService from '../services/RecurringExpenseService';
 import { colors } from '../styles/theme';
 
 const ExpensesScreen = ({ navigation }) => {
@@ -110,16 +111,29 @@ const ExpensesScreen = ({ navigation }) => {
 
   const handleAddExpense = async (expenseData) => {
     try {
-      if (editingExpense) {
-        await StorageService.updateExpense(editingExpense.id, expenseData);
+      if (expenseData.isRecurring) {
+        const recurringData = {
+          vendor: expenseData.vendor,
+          amount: expenseData.amount,
+          category: expenseData.category,
+          frequency: expenseData.frequency,
+          startDate: expenseData.date,
+          endDate: null,
+          notes: expenseData.description,
+        };
+        await RecurringExpenseService.createRecurringExpense(recurringData);
       } else {
-        await StorageService.addExpense(expenseData);
+        if (editingExpense) {
+          await StorageService.updateExpense(editingExpense.id, expenseData);
+        } else {
+          await StorageService.addExpense(expenseData);
+        }
       }
       await loadData();
       setShowAddModal(false);
       setEditingExpense(null);
     } catch (error) {
-      Alert.alert('Error', editingExpense ? 'Failed to update expense' : 'Failed to add expense');
+      Alert.alert('Error', expenseData.isRecurring ? 'Failed to create recurring expense' : (editingExpense ? 'Failed to update expense' : 'Failed to add expense'));
     }
   };
 
@@ -248,19 +262,36 @@ const ExpensesScreen = ({ navigation }) => {
 
   return (
     <Box flex={1} bg={colors.backgroundSecondary}>
-      {/* Search */}
-      <Box p="$4" bg={colors.white} borderBottomWidth={1} borderBottomColor={colors.border}>
-        <Input borderRadius="$lg" bg="$coolGray100" borderColor="$coolGray200">
-          <InputSlot pl="$3">
-            <Icon name="search" size={20} color={colors.textSecondary} />
-          </InputSlot>
-          <InputField
-            placeholder="Search vendor..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            fontSize="$md"
-          />
-        </Input>
+      {/* Header with Search and Recurring Button */}
+      <Box bg={colors.white} borderBottomWidth={1} borderBottomColor={colors.border}>
+        <HStack p="$4" alignItems="center" justifyContent="space-between" mb="$2">
+          <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} flex={1}>Expenses</Text>
+          <Pressable
+            onPress={() => navigation.navigate('RecurringExpenses')}
+            bg={colors.primary}
+            borderRadius="$lg"
+            px="$3"
+            py="$2"
+            flexDirection="row"
+            alignItems="center"
+          >
+            <Icon name="repeat" size={18} color={colors.white} />
+            <Text color={colors.white} fontWeight="$medium" fontSize="$sm" ml="$1">Recurring</Text>
+          </Pressable>
+        </HStack>
+        <Box px="$4" pb="$4">
+          <Input borderRadius="$lg" bg="$coolGray100" borderColor="$coolGray200">
+            <InputSlot pl="$3">
+              <Icon name="search" size={20} color={colors.textSecondary} />
+            </InputSlot>
+            <InputField
+              placeholder="Search vendor..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              fontSize="$md"
+            />
+          </Input>
+        </Box>
       </Box>
 
       {/* Filter Options */}
