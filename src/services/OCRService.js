@@ -1,22 +1,16 @@
 import { File } from 'expo-file-system';
-import GoogleCloudVisionConfig from './GoogleCloudVisionConfig';
+import { API_ENDPOINTS } from '../config/api';
+import * as Crypto from 'expo-crypto';
 
-// Rate limiting: max 10 requests per 60 seconds
-const RATE_LIMIT_MAX_REQUESTS = 10;
-const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const _requestTimestamps = [];
+let _clientId = null;
 
-const _isRateLimited = () => {
-  const now = Date.now();
-  // Remove timestamps outside the current window
-  while (_requestTimestamps.length > 0 && _requestTimestamps[0] <= now - RATE_LIMIT_WINDOW_MS) {
-    _requestTimestamps.shift();
-  }
-  return _requestTimestamps.length >= RATE_LIMIT_MAX_REQUESTS;
-};
-
-const _recordRequest = () => {
-  _requestTimestamps.push(Date.now());
+const getClientId = async () => {
+  if (_clientId) return _clientId;
+  _clientId = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    Math.random().toString(36) + Date.now().toString()
+  );
+  return _clientId;
 };
 
 const OCRService = {
@@ -75,52 +69,45 @@ const OCRService = {
   },
 
   /**
-   * Attempt cloud-based OCR extraction using Google Cloud Vision API
+   * Attempt cloud-based OCR extraction using Google Cloud Vision API via backend proxy
    */
   async _tryCloudOCR(imageUri) {
     try {
-      if (!GoogleCloudVisionConfig.isConfigured()) {
+      if (!API_ENDPOINTS.googleVisionOcr) {
         return null;
       }
 
-      // Check rate limit before making API call
-      if (_isRateLimited()) {
-        console.warn('OCR rate limit exceeded. Please wait before scanning another receipt.');
-        return null;
-      }
-
-      // Read image file as base64
       const file = new File(imageUri);
-      const imageData = await file.base64();
+      const base64Image = await file.base64();
 
-      // Build request for Google Cloud Vision API
-      const requestBody = GoogleCloudVisionConfig.buildRequest(imageData);
-      const url = GoogleCloudVisionConfig.getUrl();
+      const clientId = await getClientId();
 
-      // Record this request for rate limiting
-      _recordRequest();
-
-      // Call Google Cloud Vision API
-      const response = await fetch(url, {
+      const response = await fetch(API_ENDPOINTS.googleVisionOcr, {
         method: 'POST',
-        headers: GoogleCloudVisionConfig.getHeaders(),
-        body: JSON.stringify(requestBody),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-ID': clientId,
+        },
+        body: JSON.stringify({ base64Image }),
       });
 
       if (!response.ok) {
-        console.warn(`Google Cloud Vision API error: ${response.status} ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 429) {
+          console.warn('OCR rate limit exceeded. Please wait before scanning another receipt.');
+        } else {
+          console.warn(`Google Cloud Vision API error: ${response.status}`, errorData);
+        }
         return null;
       }
 
       const result = await response.json();
 
-      // Check for API errors
       if (result.error) {
         console.warn('Google Cloud Vision API error:', result.error.message);
         return null;
       }
 
-      // Extract text from response
       if (result.responses && result.responses.length > 0) {
         const textAnnotations = result.responses[0].textAnnotations;
         if (textAnnotations && textAnnotations.length > 0) {

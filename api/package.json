@@ -1,0 +1,16 @@
+{
+  "name": "receipttracker-api",
+  "version": "1.0.0",
+  "description": "Backend API proxy for ReceiptTracker mobile app",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "@google-cloud/vision": "^4.3.2"
+  },
+  "devDependencies": {
+    "vercel": "^33.0.0"
+  }
+}

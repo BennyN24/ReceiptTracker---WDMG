@@ -1,25 +1,16 @@
 import ImageStorageService from './ImageStorageService';
+import { API_ENDPOINTS } from '../config/api';
+import * as Crypto from 'expo-crypto';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || null;
-const GEMINI_API_URL = GEMINI_API_KEY
-  ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
-  : null;
+let _clientId = null;
 
-// Rate limiting: max 8 requests per 60 seconds
-const RATE_LIMIT_MAX_REQUESTS = 8;
-const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const _requestTimestamps = [];
-
-const _isRateLimited = () => {
-  const now = Date.now();
-  while (_requestTimestamps.length > 0 && _requestTimestamps[0] <= now - RATE_LIMIT_WINDOW_MS) {
-    _requestTimestamps.shift();
-  }
-  return _requestTimestamps.length >= RATE_LIMIT_MAX_REQUESTS;
-};
-
-const _recordRequest = () => {
-  _requestTimestamps.push(Date.now());
+const getClientId = async () => {
+  if (_clientId) return _clientId;
+  _clientId = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    Math.random().toString(36) + Date.now().toString()
+  );
+  return _clientId;
 };
 
 /**
@@ -32,7 +23,7 @@ const GeminiService = {
    * Check if Gemini API is properly configured
    */
   isConfigured() {
-    return !!GEMINI_API_KEY && GEMINI_API_KEY.length > 0;
+    return !!API_ENDPOINTS.geminiAnalyze;
   },
 
   /**
@@ -50,13 +41,7 @@ const GeminiService = {
       return null;
     }
 
-    if (_isRateLimited()) {
-      console.warn('GeminiService: Rate limit exceeded. Please wait before scanning another receipt.');
-      return { error: 'rate_limited', message: 'Too many requests. Please wait a moment and try again.' };
-    }
-
     try {
-      // Read image as base64
       const base64Image = await ImageStorageService.readImageAsBase64(imageUri);
 
       if (!base64Image) {
@@ -64,20 +49,24 @@ const GeminiService = {
         return null;
       }
 
-      _recordRequest();
+      const clientId = await getClientId();
 
-      const requestBody = this._buildRequest(base64Image);
-      const response = await fetch(GEMINI_API_URL, {
+      const response = await fetch(API_ENDPOINTS.geminiAnalyze, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Client-ID': clientId,
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({ base64Image }),
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`GeminiService: API error ${response.status}:`, errorText);
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 429) {
+          console.warn('GeminiService: Rate limit exceeded');
+          return { error: 'rate_limited', message: errorData.message || 'Too many requests. Please wait a moment and try again.' };
+        }
+        console.error(`GeminiService: API error ${response.status}:`, errorData);
         return null;
       }
 
@@ -89,65 +78,6 @@ const GeminiService = {
     }
   },
 
-  /**
-   * Build the Gemini API request payload
-   * @param {string} base64Image - Base64-encoded image data
-   * @returns {object} Request body for Gemini API
-   */
-  _buildRequest(base64Image) {
-    return {
-      contents: [
-        {
-          parts: [
-            {
-              text: `You are a receipt analysis expert. Analyze this receipt image and extract the following information in JSON format. Be precise and accurate.
-
-Return ONLY a valid JSON object with these fields:
-{
-  "vendor": "Store or business name (string)",
-  "amount": total amount as a number (e.g. 25.99),
-  "date": "date in YYYY-MM-DD format (string)",
-  "currency": "3-letter currency code like USD, EUR, PHP etc.",
-  "items": [
-    {
-      "name": "item name (string)",
-      "price": price as a number,
-      "quantity": quantity as a number
-    }
-  ],
-  "description": "Brief summary of the purchase (string)",
-  "category": "One of: Food & Dining, Transportation, Shopping, Entertainment, Bills & Utilities, Healthcare, Education, Other",
-  "tax": tax amount as a number or null,
-  "subtotal": subtotal amount as a number or null,
-  "paymentMethod": "Cash, Credit Card, Debit Card, or other method if visible",
-  "confidence": confidence score from 0.0 to 1.0 indicating how confident you are in the extraction
-}
-
-Important rules:
-- If a field cannot be determined, use null for numbers and empty string "" for strings
-- The "amount" should be the TOTAL amount paid (including tax)
-- Items array can be empty if individual items are not readable
-- Date should be extracted from the receipt, not today's date, unless no date is visible
-- Be conservative with confidence score
-- Return ONLY the JSON object, no markdown, no explanation, no code blocks`,
-            },
-            {
-              inlineData: {
-                mimeType: 'image/jpeg',
-                data: base64Image,
-              },
-            },
-          ],
-        },
-      ],
-      generationConfig: {
-        temperature: 0.1,
-        topK: 32,
-        topP: 1,
-        maxOutputTokens: 2048,
-      },
-    };
-  },
 
   /**
    * Parse the Gemini API response and extract structured receipt data
