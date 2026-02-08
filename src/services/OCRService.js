@@ -1,7 +1,59 @@
 import { File } from 'expo-file-system';
 import GoogleCloudVisionConfig from './GoogleCloudVisionConfig';
 
+// Rate limiting: max 10 requests per 60 seconds
+const RATE_LIMIT_MAX_REQUESTS = 10;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const _requestTimestamps = [];
+
+const _isRateLimited = () => {
+  const now = Date.now();
+  // Remove timestamps outside the current window
+  while (_requestTimestamps.length > 0 && _requestTimestamps[0] <= now - RATE_LIMIT_WINDOW_MS) {
+    _requestTimestamps.shift();
+  }
+  return _requestTimestamps.length >= RATE_LIMIT_MAX_REQUESTS;
+};
+
+const _recordRequest = () => {
+  _requestTimestamps.push(Date.now());
+};
+
 const OCRService = {
+  /**
+   * Sanitize a string by removing control characters, script tags, and trimming
+   */
+  _sanitizeString(str) {
+    if (!str || typeof str !== 'string') return str;
+    return str
+      .replace(/<[^>]*script[^>]*>/gi, '')
+      .replace(/<\/?[^>]+(>|$)/g, '')
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+      .replace(/javascript:/gi, '')
+      .replace(/on\w+\s*=/gi, '')
+      .trim()
+      .substring(0, 500);
+  },
+
+  /**
+   * Sanitize all fields in extracted receipt data
+   */
+  _sanitizeReceiptData(data) {
+    if (!data || typeof data !== 'object') return data;
+    return {
+      ...data,
+      vendor: this._sanitizeString(data.vendor),
+      description: this._sanitizeString(data.description),
+      category: this._sanitizeString(data.category),
+      items: Array.isArray(data.items)
+        ? data.items.map((item) => ({
+            ...item,
+            name: this._sanitizeString(item.name),
+          }))
+        : [],
+    };
+  },
+
   /**
    * Extract text from receipt image using cloud-based OCR
    * Falls back to basic pattern matching if API unavailable
@@ -32,6 +84,12 @@ const OCRService = {
         return null;
       }
 
+      // Check rate limit before making API call
+      if (_isRateLimited()) {
+        console.warn('OCR rate limit exceeded. Please wait before scanning another receipt.');
+        return null;
+      }
+
       // Read image file as base64
       const file = new File(imageUri);
       const imageData = await file.base64();
@@ -39,6 +97,9 @@ const OCRService = {
       // Build request for Google Cloud Vision API
       const requestBody = GoogleCloudVisionConfig.buildRequest(imageData);
       const url = GoogleCloudVisionConfig.getUrl();
+
+      // Record this request for rate limiting
+      _recordRequest();
 
       // Call Google Cloud Vision API
       const response = await fetch(url, {
@@ -133,7 +194,8 @@ const OCRService = {
     };
 
     result.confidence = this._calculateConfidence(result);
-    return result.vendor || result.amount ? result : null;
+    const sanitized = this._sanitizeReceiptData(result);
+    return sanitized.vendor || sanitized.amount ? sanitized : null;
   },
 
   /**

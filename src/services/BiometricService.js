@@ -1,8 +1,10 @@
 import * as SecureStore from 'expo-secure-store';
+import * as Crypto from 'expo-crypto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BIOMETRIC_ENABLED_KEY = '@receipt_tracker_biometric_enabled';
 const PASSCODE_KEY = '@receipt_tracker_passcode';
+const PASSCODE_SALT_KEY = '@receipt_tracker_passcode_salt';
 const BIOMETRIC_TYPE_KEY = '@receipt_tracker_biometric_type';
 
 const BiometricService = {
@@ -169,6 +171,7 @@ const BiometricService = {
   async removePasscode() {
     try {
       await SecureStore.deleteItemAsync(PASSCODE_KEY);
+      await SecureStore.deleteItemAsync(PASSCODE_SALT_KEY);
       return true;
     } catch (error) {
       console.error('Remove passcode error:', error);
@@ -177,19 +180,51 @@ const BiometricService = {
   },
 
   /**
-   * Hash passcode using simple SHA256 (in production, use bcrypt or similar)
+   * Generate a cryptographically random salt
+   */
+  async _generateSalt() {
+    try {
+      const randomBytes = await Crypto.getRandomBytesAsync(16);
+      return Array.from(randomBytes)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+    } catch (error) {
+      console.error('Generate salt error:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Get or create salt for passcode hashing
+   */
+  async _getSalt() {
+    try {
+      const existingSalt = await SecureStore.getItemAsync(PASSCODE_SALT_KEY);
+      if (existingSalt) return existingSalt;
+
+      const newSalt = await this._generateSalt();
+      if (!newSalt) throw new Error('Failed to generate salt');
+
+      await SecureStore.setItemAsync(PASSCODE_SALT_KEY, newSalt);
+      return newSalt;
+    } catch (error) {
+      console.error('Get salt error:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Hash passcode using SHA256 with unique salt
    */
   async _hashPasscode(passcode) {
     try {
-      // Placeholder - in production use proper hashing:
-      // import * as Crypto from 'expo-crypto';
-      // return await Crypto.digestStringAsync(
-      //   Crypto.CryptoDigestAlgorithm.SHA256,
-      //   passcode
-      // );
+      const salt = await this._getSalt();
+      if (!salt) throw new Error('Failed to retrieve salt for hashing');
 
-      // Simple hash for now
-      return btoa(passcode);
+      return await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        salt + passcode
+      );
     } catch (error) {
       console.error('Hash passcode error:', error);
       return null;
