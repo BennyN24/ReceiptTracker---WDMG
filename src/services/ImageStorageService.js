@@ -1,33 +1,34 @@
-import * as FileSystem from 'expo-file-system';
-import { File, Directory } from 'expo-file-system';
+import { File, Directory, Paths } from 'expo-file-system';
 
-const getReceiptImagesDir = () => {
-  if (!FileSystem.documentDirectory) {
-    throw new Error('Document directory not available');
-  }
-  return `${FileSystem.documentDirectory}receipt_images/`;
-};
+const RECEIPT_DIR_NAME = 'receipt_images';
 
 /**
  * Service for persisting captured receipt images to the device filesystem.
- * Images are stored in a dedicated directory under the app's document directory
+ * Images are stored in a dedicated directory under the app's cache directory
  * with unique filenames based on timestamp + random suffix.
+ *
+ * Uses Expo SDK 54+ File/Directory/Paths API.
  */
 const ImageStorageService = {
   /**
+   * Get or create the receipt images directory
+   * @returns {Directory} The receipt images directory
+   */
+  _getDirectory() {
+    return new Directory(Paths.cache, RECEIPT_DIR_NAME);
+  },
+
+  /**
    * Ensure the receipt images directory exists
    */
-  async _ensureDirectory() {
+  _ensureDirectory() {
     try {
-      const dirPath = getReceiptImagesDir();
-      const dir = new Directory(dirPath);
-      const exists = await dir.exists();
-      if (!exists) {
-        await dir.create();
+      const dir = this._getDirectory();
+      if (!dir.exists) {
+        dir.create();
       }
     } catch (error) {
-      console.error('Error creating directory:', error);
-      throw error;
+      console.warn('Could not create directory:', error.message);
     }
   },
 
@@ -41,30 +42,41 @@ const ImageStorageService = {
       throw new Error('Invalid source URI');
     }
 
-    await this._ensureDirectory();
-
-    const timestamp = Date.now();
-    const randomSuffix = Math.random().toString(36).substring(2, 8);
-    const extension = this._getExtension(sourceUri);
-    const filename = `receipt_${timestamp}_${randomSuffix}${extension}`;
-    const destinationUri = `${getReceiptImagesDir()}${filename}`;
-
     try {
-      await FileSystem.copyAsync({
-        from: sourceUri,
-        to: destinationUri,
-      });
+      this._ensureDirectory();
 
-      // Verify the file was saved
-      const file = new File(destinationUri);
-      if (!(await file.exists())) {
-        throw new Error('File copy succeeded but file not found at destination');
+      const timestamp = Date.now();
+      const randomSuffix = Math.random().toString(36).substring(2, 8);
+      const extension = this._getExtension(sourceUri);
+      const filename = `receipt_${timestamp}_${randomSuffix}${extension}`;
+
+      const sourceFile = new File(sourceUri);
+      const destDir = this._getDirectory();
+      const destFile = new File(destDir, filename);
+
+      sourceFile.copy(destDir);
+
+      // The copy places the file with the original name, so rename it
+      const copiedFile = new File(destDir, sourceFile.name);
+      if (copiedFile.exists && copiedFile.uri !== destFile.uri) {
+        copiedFile.rename(filename);
       }
 
-      return destinationUri;
+      // Verify
+      const finalFile = new File(destDir, filename);
+      if (finalFile.exists) {
+        return finalFile.uri;
+      }
+
+      // If rename didn't work, the copied file with original name is still valid
+      if (copiedFile.exists) {
+        return copiedFile.uri;
+      }
+
+      return sourceUri;
     } catch (error) {
-      console.error('Failed to save receipt image:', error);
-      throw new Error(`Failed to save receipt image: ${error.message}`);
+      console.warn('Failed to save receipt image, using original URI:', error.message);
+      return sourceUri;
     }
   },
 
@@ -77,8 +89,8 @@ const ImageStorageService = {
 
     try {
       const file = new File(imageUri);
-      if (await file.exists()) {
-        await file.delete();
+      if (file.exists) {
+        file.delete();
       }
     } catch (error) {
       console.warn('Failed to delete receipt image:', error);
@@ -91,11 +103,12 @@ const ImageStorageService = {
    */
   async getAllReceiptImages() {
     try {
-      await this._ensureDirectory();
-      const dirPath = getReceiptImagesDir();
-      const dir = new Directory(dirPath);
-      const files = await dir.list();
-      return files.map(file => `${dirPath}${file}`);
+      this._ensureDirectory();
+      const dir = this._getDirectory();
+      const entries = dir.list();
+      return entries
+        .filter(entry => entry instanceof File)
+        .map(file => file.uri);
     } catch (error) {
       console.error('Failed to list receipt images:', error);
       return [];
@@ -112,8 +125,8 @@ const ImageStorageService = {
       let totalSize = 0;
       for (const uri of images) {
         const file = new File(uri);
-        if (await file.exists()) {
-          totalSize += await file.size();
+        if (file.exists) {
+          totalSize += file.size || 0;
         }
       }
       return totalSize;

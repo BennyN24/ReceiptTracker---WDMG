@@ -17,3 +17,6 @@ This is the main rule for the ReceiptTracker project. It should be applied to al
 11. Use the latest stable versions of dependencies
 12. Follow the project's coding standards
 13. Follow Documentation standards Create Folder for New Features and Bug fixes on /docs
+
+#important Notes
+Do not expose any API keys to the files. Store all API and Secret Keys to .env file

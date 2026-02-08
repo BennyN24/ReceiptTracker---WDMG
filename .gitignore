@@ -50,7 +50,8 @@ yarn-error.*
 /android
 
 #windsurf
-.windsurf/
+.windsurf/rules/
+docs/
 
 #variables
 .env
