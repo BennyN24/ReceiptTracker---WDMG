@@ -278,6 +278,33 @@ export const StorageService = {
     }
   },
 
+  async updateBudget(budgetId, updates) {
+    try {
+      if (!budgetId || typeof budgetId !== 'string') {
+        throw new Error('Budget ID is required and must be a string');
+      }
+      
+      const budgets = await this.getBudgets();
+      const budgetIndex = budgets.findIndex(budget => budget.id === budgetId);
+      
+      if (budgetIndex === -1) {
+        throw new Error('Budget not found');
+      }
+      
+      const updatedBudget = { ...budgets[budgetIndex], ...updates, updatedAt: new Date().toISOString() };
+      validateBudgetData(updatedBudget);
+      
+      const updatedBudgets = [...budgets];
+      updatedBudgets[budgetIndex] = updatedBudget;
+      
+      await this.saveBudgets(updatedBudgets);
+      return updatedBudget;
+    } catch (error) {
+      console.error('Error updating budget:', error);
+      throw new Error(`Failed to update budget: ${error.message}`);
+    }
+  },
+
   async deleteBudget(budgetId) {
     try {
       if (!budgetId || typeof budgetId !== 'string') {
