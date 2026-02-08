@@ -14,7 +14,7 @@ Google Cloud Vision API has been integrated into ReceiptTracker for automatic re
 
 ## Current Configuration
 
-**API Key:** REDACTED_API_KEY  
+**API Key:** Configured via `.env` file (never commit API keys)  
 **Provider:** Google Cloud Vision  
 **Endpoint:** https://vision.googleapis.com/v1/images:annotate  
 **Status:** Active and Ready
@@ -97,7 +97,7 @@ Return result
 ### Environment Variables (.env)
 
 ```bash
-GOOGLE_CLOUD_API_KEY=REDACTED_API_KEY
+GOOGLE_CLOUD_API_KEY=your_api_key_here
 OCR_PROVIDER=google
 OCR_FALLBACK_ENABLED=true
 ```

@@ -90,7 +90,7 @@ apiKey: process.env.GOOGLE_CLOUD_API_KEY || 'AIzaSy...'
 
 **File:** `src/services/GoogleCloudVisionConfig.js`
 
-**Action Required:** The previously exposed API key (`REDACTED_API_KEY`) should be **rotated immediately** in the Google Cloud Console, as it was committed to git history.
+**Action Required:** The previously exposed API key should be **rotated immediately** in the Google Cloud Console, as it was committed to git history.
 
 ---
 
