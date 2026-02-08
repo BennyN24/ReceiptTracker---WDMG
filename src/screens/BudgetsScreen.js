@@ -21,6 +21,8 @@ import { ProgressBar, Portal } from 'react-native-paper';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import { StorageService } from '../services/StorageService';
 import { colors } from '../styles/theme';
+import AddBudgetModal from '../components/AddBudgetModal';
+import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 
 const BudgetsScreen = ({ navigation }) => {
   const [budgets, setBudgets] = useState([]);
@@ -30,11 +32,9 @@ const BudgetsScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [availablePresets, setAvailablePresets] = useState([]);
-  const [newBudget, setNewBudget] = useState({
-    name: '',
-    amount: '',
-    period: 'monthly',
-  });
+  const [editingBudget, setEditingBudget] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingBudgetId, setDeletingBudgetId] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -102,54 +102,46 @@ const BudgetsScreen = ({ navigation }) => {
     };
   }, [getBudgetSpent]);
 
-  const handleAddBudget = async () => {
-    const budgetAmount = parseFloat(newBudget.amount);
-    
-    if (!newBudget.name.trim()) {
-      Alert.alert('Error', 'Budget name is required');
-      return;
-    }
-    
-    if (!newBudget.amount || isNaN(budgetAmount) || budgetAmount <= 0) {
-      Alert.alert('Error', 'Please enter a valid budget amount');
-      return;
-    }
-
+  const handleAddBudget = async (budgetData) => {
     try {
-      await StorageService.addBudget({
-        name: newBudget.name.trim(),
-        amount: budgetAmount,
-        period: newBudget.period,
-      });
+      if (editingBudget) {
+        await StorageService.updateBudget(editingBudget.id, budgetData);
+      } else {
+        await StorageService.addBudget(budgetData);
+      }
       
-      setNewBudget({ name: '', amount: '', period: 'monthly' });
       setShowAddModal(false);
+      setEditingBudget(null);
       await loadData();
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to add budget');
+      Alert.alert('Error', editingBudget ? 'Failed to update budget' : 'Failed to add budget');
     }
   };
 
+  const handleEditBudget = (budget) => {
+    setEditingBudget(budget);
+    setShowAddModal(true);
+  };
+
   const handleDeleteBudget = (budgetId) => {
-    Alert.alert(
-      'Delete Budget',
-      'Are you sure you want to delete this budget?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await StorageService.deleteBudget(budgetId);
-              await loadData();
-            } catch (error) {
-              Alert.alert('Error', error.message || 'Failed to delete budget');
-            }
-          },
-        },
-      ]
-    );
+    setDeletingBudgetId(budgetId);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      await StorageService.deleteBudget(deletingBudgetId);
+      await loadData();
+      setShowDeleteModal(false);
+      setDeletingBudgetId(null);
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to delete budget');
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setDeletingBudgetId(null);
   };
 
   const handleAddPresetBudget = async (categoryId) => {
@@ -182,42 +174,50 @@ const BudgetsScreen = ({ navigation }) => {
       const progressColor = getProgressColor(percentage);
 
       return (
-        <Box key={budget.id} mb="$4" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
-          <HStack justifyContent="space-between" alignItems="flex-start" mb="$3">
-            <VStack flex={1}>
-              <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$1">{budget.name}</Text>
-              <Text fontSize="$sm" color={colors.textSecondary}>
-                {budget.period.charAt(0).toUpperCase() + budget.period.slice(1)}
+        <Pressable key={budget.id} onPress={() => handleEditBudget(budget)}>
+          <Box mb="$4" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
+            <HStack justifyContent="space-between" alignItems="flex-start" mb="$3">
+              <VStack flex={1}>
+                <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$1">{budget.name}</Text>
+                <Text fontSize="$sm" color={colors.textSecondary}>
+                  {budget.period.charAt(0).toUpperCase() + budget.period.slice(1)}
+                </Text>
+              </VStack>
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  handleDeleteBudget(budget.id);
+                }}
+                p="$1"
+              >
+                <Icon name="delete" size={20} color={colors.error} />
+              </Pressable>
+            </HStack>
+
+            <HStack alignItems="baseline" mb="$3">
+              <Text fontWeight="$bold" fontSize="$xl" color={colors.text}>{formatCurrency(spent)}</Text>
+              <Text fontSize="$md" color={colors.textSecondary}> / {formatCurrency(budget.amount)}</Text>
+            </HStack>
+
+            <ProgressBar
+              progress={percentage / 100}
+              color={progressColor}
+              style={{ height: 8, borderRadius: 4, marginBottom: 12 }}
+            />
+
+            <HStack justifyContent="space-between" alignItems="center">
+              <Text fontSize="$sm" fontWeight="$medium" color={progressColor}>
+                {percentage.toFixed(1)}% used
               </Text>
-            </VStack>
-            <Pressable onPress={() => handleDeleteBudget(budget.id)} p="$1">
-              <Icon name="delete" size={20} color={colors.error} />
-            </Pressable>
-          </HStack>
-
-          <HStack alignItems="baseline" mb="$3">
-            <Text fontWeight="$bold" fontSize="$xl" color={colors.text}>{formatCurrency(spent)}</Text>
-            <Text fontSize="$md" color={colors.textSecondary}> / {formatCurrency(budget.amount)}</Text>
-          </HStack>
-
-          <ProgressBar
-            progress={percentage / 100}
-            color={progressColor}
-            style={{ height: 8, borderRadius: 4, marginBottom: 12 }}
-          />
-
-          <HStack justifyContent="space-between" alignItems="center">
-            <Text fontSize="$sm" fontWeight="$medium" color={progressColor}>
-              {percentage.toFixed(1)}% used
-            </Text>
-            <Text fontSize="$sm" fontWeight="$medium" color={remaining >= 0 ? colors.success : colors.error}>
-              {remaining >= 0 ? `${formatCurrency(remaining)} left` : `${formatCurrency(Math.abs(remaining))} over`}
-            </Text>
-          </HStack>
-        </Box>
+              <Text fontSize="$sm" fontWeight="$medium" color={remaining >= 0 ? colors.success : colors.error}>
+                {remaining >= 0 ? `${formatCurrency(remaining)} left` : `${formatCurrency(Math.abs(remaining))} over`}
+              </Text>
+            </HStack>
+          </Box>
+        </Pressable>
       );
     };
-  }, [getBudgetSpent, getBudgetPercentage, getProgressColor, formatCurrency, handleDeleteBudget]);
+  }, [getBudgetSpent, getBudgetPercentage, getProgressColor, formatCurrency, handleEditBudget, handleDeleteBudget]);
 
   const renderPresetBudgets = () => {
     if (availablePresets.length === 0) return null;
@@ -343,112 +343,25 @@ const BudgetsScreen = ({ navigation }) => {
         <Icon name="add" size={28} color={colors.white} />
       </Pressable>
 
-      {/* Add Budget Modal */}
-      <Portal>
-        <Modal
-          visible={showAddModal}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setShowAddModal(false)}
-        >
-          <Box flex={1} bg={colors.white}>
-            <HStack bg={colors.white} borderBottomWidth={1} borderBottomColor={colors.border} py="$3" px="$2" alignItems="center" justifyContent="space-between" pt="$12">
-              <Pressable onPress={() => setShowAddModal(false)} p="$2">
-                <Icon name="close" size={24} color={colors.text} />
-              </Pressable>
-              <Text fontWeight="$semibold" fontSize="$lg" color={colors.text}>Create Budget</Text>
-              <Pressable onPress={handleAddBudget} p="$2">
-                <Icon name="check" size={24} color={colors.primary} />
-              </Pressable>
-            </HStack>
+      {/* Add/Edit Budget Modal */}
+      <AddBudgetModal
+        visible={showAddModal}
+        onClose={() => {
+          setShowAddModal(false);
+          setEditingBudget(null);
+        }}
+        onSave={handleAddBudget}
+        initialData={editingBudget}
+      />
 
-            <ScrollView p="$4">
-              <VStack mb="$6">
-                <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$2">Budget Name</Text>
-                <Input borderRadius="$lg" borderColor={colors.border}>
-                  <InputField
-                    placeholder="e.g. Monthly Expenses"
-                    value={newBudget.name}
-                    onChangeText={(text) => setNewBudget({ ...newBudget, name: text })}
-                    fontSize="$md"
-                  />
-                </Input>
-              </VStack>
-
-              <VStack mb="$6">
-                <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$2">Budget Amount ($)</Text>
-                <Input borderRadius="$lg" borderColor={colors.border}>
-                  <InputField
-                    placeholder="0.00"
-                    value={newBudget.amount}
-                    onChangeText={(text) => {
-                      // Only allow numeric input with decimal point
-                      const numericValue = text.replace(/[^0-9.]/g, '');
-                      // Ensure only one decimal point
-                      const parts = numericValue.split('.');
-                      if (parts.length > 2) {
-                        setNewBudget({ ...newBudget, amount: parts[0] + '.' + parts[1] });
-                      } else {
-                        setNewBudget({ ...newBudget, amount: numericValue });
-                      }
-                    }}
-                    keyboardType="numeric"
-                    fontSize="$md"
-                  />
-                </Input>
-              </VStack>
-
-              <VStack mb="$6">
-                <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$2">Period</Text>
-                <HStack space="sm">
-                  {['weekly', 'monthly', 'yearly'].map((period) => (
-                    <Pressable
-                      key={period}
-                      flex={1}
-                      py="$3"
-                      px="$4"
-                      borderRadius="$lg"
-                      borderWidth={1}
-                      borderColor={newBudget.period === period ? colors.primary : colors.border}
-                      bg={newBudget.period === period ? colors.primary : colors.white}
-                      alignItems="center"
-                      onPress={() => setNewBudget({ ...newBudget, period })}
-                    >
-                      <Text
-                        fontSize="$sm"
-                        fontWeight="$medium"
-                        color={newBudget.period === period ? colors.white : colors.textSecondary}
-                      >
-                        {period.charAt(0).toUpperCase() + period.slice(1)}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </HStack>
-              </VStack>
-
-              <VStack mt="$8" space="md">
-                <Pressable
-                  onPress={handleAddBudget}
-                  bg={colors.primary}
-                  borderRadius="$lg"
-                  py="$3.5"
-                  alignItems="center"
-                >
-                  <Text color={colors.white} fontWeight="$semibold" fontSize="$md">Create Budget</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setShowAddModal(false)}
-                  borderRadius="$lg"
-                  py="$3.5"
-                  alignItems="center"
-                >
-                  <Text color={colors.textSecondary} fontWeight="$medium" fontSize="$md">Cancel</Text>
-                </Pressable>
-              </VStack>
-            </ScrollView>
-          </Box>
-        </Modal>
-      </Portal>
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        visible={showDeleteModal}
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        title="Delete Budget"
+        message="Are you sure you want to delete this budget? This action cannot be undone."
+      />
     </Box>
   );
 };
