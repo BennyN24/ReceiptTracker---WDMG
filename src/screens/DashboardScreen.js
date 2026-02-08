@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   StyleSheet,
   Alert,
@@ -21,6 +21,7 @@ import {
 import { ProgressBar } from 'react-native-paper';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import { PieChart, BarChart } from 'react-native-chart-kit';
+import { useFocusEffect } from '@react-navigation/native';
 import { StorageService } from '../services/StorageService';
 import AnalyticsService from '../services/AnalyticsService';
 import { colors } from '../styles/theme';
@@ -34,10 +35,17 @@ const DashboardScreen = ({ navigation }) => {
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [chartPeriod, setChartPeriod] = useState('monthly');
 
   useEffect(() => {
     loadData();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
 
   const loadData = async () => {
     try {
@@ -123,6 +131,72 @@ const DashboardScreen = ({ navigation }) => {
     });
   }, [expenses, categories]);
 
+  const getDailyTrendData = useMemo(() => {
+    const now = new Date();
+    const last7Days = [];
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      
+      const dayExpenses = expenses.filter(expense => expense.date === dateStr);
+      const total = dayExpenses.reduce((sum, e) => sum + e.amount, 0);
+      
+      last7Days.push({
+        label: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        total: parseFloat(total.toFixed(2)),
+      });
+    }
+    
+    if (last7Days.every(day => day.total === 0)) return null;
+    
+    return {
+      labels: last7Days.map(item => item.label),
+      datasets: [
+        {
+          data: last7Days.map(item => item.total || 0),
+        },
+      ],
+    };
+  }, [expenses]);
+
+  const getWeeklyTrendData = useMemo(() => {
+    const now = new Date();
+    const last4Weeks = [];
+    
+    for (let i = 3; i >= 0; i--) {
+      const weekEnd = new Date(now);
+      weekEnd.setDate(weekEnd.getDate() - (i * 7));
+      const weekStart = new Date(weekEnd);
+      weekStart.setDate(weekStart.getDate() - 6);
+      
+      const startStr = weekStart.toISOString().split('T')[0];
+      const endStr = weekEnd.toISOString().split('T')[0];
+      
+      const weekExpenses = expenses.filter(expense => 
+        expense.date >= startStr && expense.date <= endStr
+      );
+      const total = weekExpenses.reduce((sum, e) => sum + e.amount, 0);
+      
+      last4Weeks.push({
+        label: `W${4 - i}`,
+        total: parseFloat(total.toFixed(2)),
+      });
+    }
+    
+    if (last4Weeks.every(week => week.total === 0)) return null;
+    
+    return {
+      labels: last4Weeks.map(item => item.label),
+      datasets: [
+        {
+          data: last4Weeks.map(item => item.total || 0),
+        },
+      ],
+    };
+  }, [expenses]);
+
   const monthlyTrendData = useMemo(() => {
     const comparison = AnalyticsService.getMonthOverMonthComparison(expenses, 6);
     if (comparison.length === 0) return null;
@@ -136,6 +210,30 @@ const DashboardScreen = ({ navigation }) => {
       ],
     };
   }, [expenses]);
+
+  const currentTrendData = useMemo(() => {
+    switch (chartPeriod) {
+      case 'daily':
+        return getDailyTrendData;
+      case 'weekly':
+        return getWeeklyTrendData;
+      case 'monthly':
+      default:
+        return monthlyTrendData;
+    }
+  }, [chartPeriod, getDailyTrendData, getWeeklyTrendData, monthlyTrendData]);
+
+  const getChartTitle = () => {
+    switch (chartPeriod) {
+      case 'daily':
+        return 'Daily Trend (Last 7 Days)';
+      case 'weekly':
+        return 'Weekly Trend (Last 4 Weeks)';
+      case 'monthly':
+      default:
+        return 'Monthly Trend';
+    }
+  };
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
@@ -294,9 +392,7 @@ const DashboardScreen = ({ navigation }) => {
         <Box mx="$5" mb="$5" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 2 }} shadowOpacity={0.08} shadowRadius={8} elevation={3}>
           <HStack justifyContent="space-between" alignItems="center" mb="$4">
             <Text fontWeight="$semibold" fontSize="$lg" color={colors.text}>Spending by Category</Text>
-            <Pressable onPress={() => navigation.navigate('Analytics')}>
-              <Text color={colors.primary} fontSize="$sm" fontWeight="$medium">Details</Text>
-            </Pressable>
+            
           </HStack>
           <PieChart
             data={categoryChartData}
@@ -323,45 +419,102 @@ const DashboardScreen = ({ navigation }) => {
         </Box>
       )}
 
-      {/* Monthly Spending Trend - Bar Chart */}
-      {monthlyTrendData && (
+      {/* Spending Trend - Bar Chart with Period Toggle */}
+      {currentTrendData && (
         <Box mx="$5" mb="$5" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 2 }} shadowOpacity={0.08} shadowRadius={8} elevation={3}>
-          <HStack justifyContent="space-between" alignItems="center" mb="$4">
-            <Text fontWeight="$semibold" fontSize="$lg" color={colors.text}>Monthly Trend</Text>
-            <Pressable onPress={() => navigation.navigate('Analytics')}>
-              <Text color={colors.primary} fontSize="$sm" fontWeight="$medium">Details</Text>
-            </Pressable>
-          </HStack>
-          <Box alignItems="center">
-            <BarChart
-              data={monthlyTrendData}
-              width={screenWidth - 80}
-              height={220}
-              yAxisLabel="$"
-              yAxisSuffix=""
-              chartConfig={{
-                backgroundColor: 'transparent',
-                backgroundGradientFrom: '#ffffff',
-                backgroundGradientTo: '#ffffff',
-                decimalPlaces: 0,
-                color: (opacity = 1) => `rgba(22, 163, 74, ${opacity})`,
-                labelColor: (opacity = 1) => `rgba(51, 65, 85, ${opacity})`,
-                barPercentage: 0.6,
-                propsForBackgroundLines: {
-                  strokeDasharray: '4 4',
-                  stroke: '#e2e8f0',
-                  strokeWidth: 1,
-                },
-                propsForLabels: {
-                  fontSize: 12,
-                },
-              }}
-              style={{ borderRadius: 8 }}
-              fromZero
-              showValuesOnTopOfBars
-              withInnerLines={true}
-            />
-          </Box>
+          <VStack space="md">
+            <HStack justifyContent="space-between" alignItems="center">
+              <Text fontWeight="$semibold" fontSize="$lg" color={colors.text}>{getChartTitle()}</Text>
+            </HStack>
+            
+            {/* Period Toggle Buttons */}
+            <HStack space="xs" justifyContent="center">
+              <Pressable
+                onPress={() => setChartPeriod('daily')}
+                bg={chartPeriod === 'daily' ? colors.primary : colors.backgroundSecondary}
+                borderRadius="$lg"
+                px="$4"
+                py="$2"
+                flex={1}
+                alignItems="center"
+              >
+                <Text
+                  color={chartPeriod === 'daily' ? colors.white : colors.textSecondary}
+                  fontWeight={chartPeriod === 'daily' ? '$semibold' : '$normal'}
+                  fontSize="$sm"
+                >
+                  Daily
+                </Text>
+              </Pressable>
+              
+              <Pressable
+                onPress={() => setChartPeriod('weekly')}
+                bg={chartPeriod === 'weekly' ? colors.primary : colors.backgroundSecondary}
+                borderRadius="$lg"
+                px="$4"
+                py="$2"
+                flex={1}
+                alignItems="center"
+              >
+                <Text
+                  color={chartPeriod === 'weekly' ? colors.white : colors.textSecondary}
+                  fontWeight={chartPeriod === 'weekly' ? '$semibold' : '$normal'}
+                  fontSize="$sm"
+                >
+                  Weekly
+                </Text>
+              </Pressable>
+              
+              <Pressable
+                onPress={() => setChartPeriod('monthly')}
+                bg={chartPeriod === 'monthly' ? colors.primary : colors.backgroundSecondary}
+                borderRadius="$lg"
+                px="$4"
+                py="$2"
+                flex={1}
+                alignItems="center"
+              >
+                <Text
+                  color={chartPeriod === 'monthly' ? colors.white : colors.textSecondary}
+                  fontWeight={chartPeriod === 'monthly' ? '$semibold' : '$normal'}
+                  fontSize="$sm"
+                >
+                  Monthly
+                </Text>
+              </Pressable>
+            </HStack>
+            
+            <Box alignItems="center">
+              <BarChart
+                data={currentTrendData}
+                width={screenWidth - 80}
+                height={220}
+                yAxisLabel="$"
+                yAxisSuffix=""
+                chartConfig={{
+                  backgroundColor: 'transparent',
+                  backgroundGradientFrom: '#ffffff',
+                  backgroundGradientTo: '#ffffff',
+                  decimalPlaces: 0,
+                  color: (opacity = 1) => `rgba(22, 163, 74, ${opacity})`,
+                  labelColor: (opacity = 1) => `rgba(51, 65, 85, ${opacity})`,
+                  barPercentage: 0.6,
+                  propsForBackgroundLines: {
+                    strokeDasharray: '4 4',
+                    stroke: '#e2e8f0',
+                    strokeWidth: 1,
+                  },
+                  propsForLabels: {
+                    fontSize: 12,
+                  },
+                }}
+                style={{ borderRadius: 8 }}
+                fromZero
+                showValuesOnTopOfBars
+                withInnerLines={true}
+              />
+            </Box>
+          </VStack>
         </Box>
       )}
 

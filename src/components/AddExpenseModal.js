@@ -36,6 +36,7 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData }) => {
   const [errors, setErrors] = useState({});
 
   const frequencyOptions = [
+    { label: 'Daily', value: 'daily' },
     { label: 'Weekly', value: 'weekly' },
     { label: 'Bi-weekly', value: 'biweekly' },
     { label: 'Monthly', value: 'monthly' },

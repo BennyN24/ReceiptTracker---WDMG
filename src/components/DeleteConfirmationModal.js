@@ -24,7 +24,7 @@ const DeleteConfirmationModal = ({ visible, onConfirm, onCancel, title = 'Delete
           <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$2">{title}</Text>
           <Text fontSize="$md" color={colors.textSecondary} mb="$6">{message}</Text>
           
-          <HStack space="md" justifyContent="flex-end">
+          <HStack space="$md" justifyContent="flex-end">
             <Pressable
               onPress={onCancel}
               borderRadius="$lg"
