@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import CurrencyService from './CurrencyService';
 
 const NOTIFICATION_STORAGE_KEY = '@receipt_tracker_notifications';
 
@@ -30,17 +31,18 @@ const NotificationService = {
   /**
    * Send budget alert notification
    */
-  async sendBudgetAlert(budgetName, percentageUsed, remainingAmount) {
+  async sendBudgetAlert(budgetName, percentageUsed, remainingAmount, currencyCode = 'USD') {
     try {
+      const symbol = CurrencyService.getSymbol(currencyCode);
       const title = `Budget Alert: ${budgetName}`;
       let body = '';
 
       if (percentageUsed >= 100) {
-        body = `You've exceeded your budget! Amount over: $${(remainingAmount * -1).toFixed(2)}`;
+        body = `You've exceeded your budget! Amount over: ${symbol}${(remainingAmount * -1).toFixed(2)}`;
       } else if (percentageUsed >= 90) {
-        body = `You're at ${percentageUsed.toFixed(0)}% of your budget. Remaining: $${remainingAmount.toFixed(2)}`;
+        body = `You're at ${percentageUsed.toFixed(0)}% of your budget. Remaining: ${symbol}${remainingAmount.toFixed(2)}`;
       } else if (percentageUsed >= 75) {
-        body = `You're at ${percentageUsed.toFixed(0)}% of your budget. Remaining: $${remainingAmount.toFixed(2)}`;
+        body = `You're at ${percentageUsed.toFixed(0)}% of your budget. Remaining: ${symbol}${remainingAmount.toFixed(2)}`;
       }
 
       await Notifications.scheduleNotificationAsync({

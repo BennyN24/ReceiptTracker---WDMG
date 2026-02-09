@@ -26,6 +26,8 @@ import AddExpenseModal from '../components/AddExpenseModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import { StorageService } from '../services/StorageService';
 import RecurringExpenseService from '../services/RecurringExpenseService';
+import NotificationService from '../services/NotificationService';
+import CurrencyService from '../services/CurrencyService';
 import { useThemeColors } from '../hooks/useThemeColors';
 
 const ExpensesScreen = ({ navigation }) => {
@@ -134,6 +136,37 @@ const ExpensesScreen = ({ navigation }) => {
       await loadData();
       setShowAddModal(false);
       setEditingExpense(null);
+
+      // Check budget and send notification if threshold exceeded
+      if (!editingExpense && !expenseData.isRecurring && settings.notifications) {
+        try {
+          const [allExpenses, currentSettings] = await Promise.all([
+            StorageService.getExpenses(),
+            StorageService.getSettings(),
+          ]);
+          const now = new Date();
+          const monthlyExpenses = allExpenses.filter(e => {
+            const d = new Date(e.date);
+            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+          });
+          const totalSpent = monthlyExpenses.reduce((sum, e) => sum + e.amount, 0);
+          const budget = currentSettings.monthlyBudget || 1550;
+          const percentage = (totalSpent / budget) * 100;
+          const remaining = budget - totalSpent;
+          const currencySymbol = CurrencyService.getSymbol(currentSettings.currency || 'USD');
+
+          if (percentage >= 75) {
+            await NotificationService.sendBudgetAlert(
+              `Monthly Budget (${currencySymbol}${budget.toFixed(2)})`,
+              percentage,
+              remaining,
+              currentSettings.currency || 'USD'
+            );
+          }
+        } catch (notifError) {
+          console.error('Budget notification check error:', notifError);
+        }
+      }
     } catch (error) {
       Alert.alert('Error', expenseData.isRecurring ? 'Failed to create recurring expense' : (editingExpense ? 'Failed to update expense' : 'Failed to add expense'));
     }

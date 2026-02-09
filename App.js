@@ -1,14 +1,46 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { GluestackUIProvider } from '@gluestack-ui/themed';
 import AppNavigator from './src/navigation/AppNavigator';
 import { ThemeProvider, ThemeContext } from './src/context/ThemeContext';
 import { getTheme, gluestackThemeConfig } from './src/styles/theme';
+import NotificationService from './src/services/NotificationService';
+import RecurringExpenseService from './src/services/RecurringExpenseService';
+import { StorageService } from './src/services/StorageService';
 
 function AppContent() {
   const { isDarkMode } = useContext(ThemeContext);
   const currentTheme = getTheme(isDarkMode);
+
+  useEffect(() => {
+    const initNotifications = async () => {
+      try {
+        const settings = await StorageService.getSettings();
+        if (settings.notifications) {
+          const granted = await NotificationService.initialize();
+          if (granted) {
+            // Schedule recurring notifications
+            await NotificationService.scheduleDailySummary(20, 0);
+            await NotificationService.scheduleWeeklyReview(2, 10, 0);
+
+            // Check for recurring expenses due today
+            const dueExpenses = await RecurringExpenseService.getExpensesDueToday();
+            if (dueExpenses.length > 0) {
+              const names = dueExpenses.map(e => e.vendor).join(', ');
+              await NotificationService.sendExpenseReminder(
+                `You have ${dueExpenses.length} recurring expense(s) due today: ${names}`
+              );
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Notification init error:', error);
+      }
+    };
+
+    initNotifications();
+  }, []);
 
   return (
     <GluestackUIProvider config={gluestackThemeConfig}>

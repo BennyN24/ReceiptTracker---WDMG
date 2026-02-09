@@ -98,26 +98,27 @@ const MainTabNavigator = () => {
       <Tab.Screen 
         name="Dashboard" 
         component={DashboardScreen}
-        options={{ title: 'Dashboard' }}
+        options={{ headerShown: false }}
       />
       <Tab.Screen 
         name="Expenses" 
         component={ExpensesStack}
-        options={{ title: 'Expenses' }}
+        options={{ headerShown: false }}
       />
       <Tab.Screen 
         name="Capture" 
         component={CaptureScreen}
+        options={{ headerShown: false }}
       />
       <Tab.Screen 
         name="Budgets" 
         component={BudgetsStack}
-        options={{ title: 'Budgets' }}
+        options={{ headerShown: false }}
       />
       <Tab.Screen 
         name="Settings" 
         component={SettingsScreen}
-        options={{ title: 'Settings' }}
+        options={{ headerShown: false }}
       />
     </Tab.Navigator>
   );

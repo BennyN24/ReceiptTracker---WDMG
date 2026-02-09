@@ -5,6 +5,7 @@ import {
   Modal,
   FlatList,
   RefreshControl,
+  Linking,
 } from 'react-native';
 import {
   Box,
@@ -21,7 +22,9 @@ import {
 } from '@gluestack-ui/themed';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import { StorageService } from '../services/StorageService';
+import ExportService from '../services/ExportService';
 import CurrencyService from '../services/CurrencyService';
+import NotificationService from '../services/NotificationService';
 import { getColors } from '../styles/theme';
 import { ThemeContext } from '../context/ThemeContext';
 
@@ -93,28 +96,44 @@ const SettingsScreen = ({ navigation }) => {
     }
   };
 
+  const [exporting, setExporting] = useState(false);
+
   const handleExportData = async () => {
+    const isAvailable = await ExportService.isSharingAvailable();
+    if (!isAvailable) {
+      Alert.alert('Unavailable', 'Sharing is not supported on this device.');
+      return;
+    }
+
+    Alert.alert(
+      'Export Data',
+      'Choose an export format:',
+      [
+        {
+          text: 'JSON (Full Backup)',
+          onPress: () => performExport('json'),
+        },
+        {
+          text: 'CSV (Expenses Only)',
+          onPress: () => performExport('csv'),
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  const performExport = async (format) => {
+    setExporting(true);
     try {
-      const [expenses, budgets] = await Promise.all([
-        StorageService.getExpenses(),
-        StorageService.getBudgets(),
-      ]);
-
-      const exportData = {
-        expenses,
-        budgets,
-        settings,
-        exportDate: new Date().toISOString(),
-      };
-
-      // In a real app, you'd share this data or save to a file
-      Alert.alert(
-        'Export Data',
-        'Data exported successfully! (In a real app, this would save to a file or share)',
-        [{ text: 'OK' }]
-      );
+      if (format === 'json') {
+        await ExportService.exportAsJSON();
+      } else {
+        await ExportService.exportAsCSV();
+      }
     } catch (error) {
-      Alert.alert('Error', 'Failed to export data');
+      Alert.alert('Export Failed', error.message || 'Failed to export data');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -276,7 +295,24 @@ const SettingsScreen = ({ navigation }) => {
           </VStack>
           <Switch
             value={settings.notifications}
-            onValueChange={(value) => updateSetting('notifications', value)}
+            onValueChange={async (value) => {
+              if (value) {
+                const granted = await NotificationService.initialize();
+                if (!granted) {
+                  Alert.alert(
+                    'Permissions Required',
+                    'Please enable notifications in your device settings to receive budget alerts and reminders.'
+                  );
+                  return;
+                }
+                await updateSetting('notifications', true);
+                await NotificationService.scheduleDailySummary(20, 0);
+                await NotificationService.scheduleWeeklyReview(2, 10, 0);
+              } else {
+                await NotificationService.cancelAllNotifications();
+                await updateSetting('notifications', false);
+              }
+            }}
             trackColor={{ false: '#e2e8f0', true: colors.primaryLighter }}
             thumbColor={settings.notifications ? colors.primary : '#ffffff'}
           />
@@ -304,18 +340,24 @@ const SettingsScreen = ({ navigation }) => {
       <Box mx="$4" mt="$4" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
         <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$4">Data Management</Text>
         
-        <Pressable onPress={handleExportData} py="$3">
+        <Pressable onPress={handleExportData} py="$3" disabled={exporting} opacity={exporting ? 0.5 : 1}>
           <HStack justifyContent="space-between" alignItems="center">
             <HStack alignItems="center" flex={1}>
               <Icon name="file-download" size={24} color={colors.primary} />
               <VStack ml="$3" flex={1}>
-                <Text fontWeight="$medium" fontSize="$md" color={colors.text} mb="$1">Export Data</Text>
+                <Text fontWeight="$medium" fontSize="$md" color={colors.text} mb="$1">
+                  {exporting ? 'Exporting...' : 'Export Data'}
+                </Text>
                 <Text fontSize="$sm" color={colors.textSecondary}>
                   Download all your expenses and budgets
                 </Text>
               </VStack>
             </HStack>
-            <Icon name="chevron-right" size={24} color={colors.textMuted} />
+            {exporting ? (
+              <Spinner size="small" color={colors.primary} />
+            ) : (
+              <Icon name="chevron-right" size={24} color={colors.textMuted} />
+            )}
           </HStack>
         </Pressable>
 
@@ -339,6 +381,92 @@ const SettingsScreen = ({ navigation }) => {
         </Pressable>
       </Box>
 
+      {/* Feedback & Support */}
+      <Box mx="$4" mt="$4" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
+        <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$4">Feedback & Support</Text>
+
+        <Pressable
+          onPress={() => {
+            Linking.openURL('mailto:benny@bennys-bio.site?subject=Feedback%20-%20Receipt%20Tracker%20v1.0.0').catch(() =>
+              Alert.alert('Error', 'Unable to open email client. Please email us at benny@bennys-bio.site')
+            );
+          }}
+          py="$3"
+        >
+          <HStack justifyContent="space-between" alignItems="center">
+            <HStack alignItems="center" flex={1}>
+              <Icon name="email" size={24} color={colors.primary} />
+              <VStack ml="$3" flex={1}>
+                <Text fontWeight="$medium" fontSize="$md" color={colors.text} mb="$1">Send Feedback</Text>
+                <Text fontSize="$sm" color={colors.textSecondary}>
+                  Share your thoughts or suggestions with us
+                </Text>
+              </VStack>
+            </HStack>
+            <Icon name="chevron-right" size={24} color={colors.textMuted} />
+          </HStack>
+        </Pressable>
+
+        <Divider my="$4" />
+
+        <Pressable
+          onPress={() => {
+            Linking.openURL('mailto:benny@bennys-bio.site?subject=Bug%20Report%20-%20Receipt%20Tracker%20v1.0.0&body=Please%20describe%20the%20issue%20below%3A%0A%0ASteps%20to%20reproduce%3A%0A1.%20%0A2.%20%0A3.%20%0A%0AExpected%20behavior%3A%0A%0AActual%20behavior%3A').catch(() =>
+              Alert.alert('Error', 'Unable to open email client. Please email us at benny@bennys-bio.site')
+            );
+          }}
+          py="$3"
+        >
+          <HStack justifyContent="space-between" alignItems="center">
+            <HStack alignItems="center" flex={1}>
+              <Icon name="bug-report" size={24} color={colors.warning} />
+              <VStack ml="$3" flex={1}>
+                <Text fontWeight="$medium" fontSize="$md" color={colors.text} mb="$1">Report a Bug</Text>
+                <Text fontSize="$sm" color={colors.textSecondary}>
+                  Let us know about any issues you encounter
+                </Text>
+              </VStack>
+            </HStack>
+            <Icon name="chevron-right" size={24} color={colors.textMuted} />
+          </HStack>
+        </Pressable>
+
+        <Divider my="$4" />
+
+        <Pressable
+          onPress={() => {
+            Alert.alert(
+              'Rate Receipt Tracker',
+              'Enjoying the app? Please rate us on the App Store or Google Play!',
+              [
+                { text: 'Not Now', style: 'cancel' },
+                {
+                  text: 'Rate Now',
+                  onPress: () => {
+                    // Replace with actual store URLs when published
+                    Alert.alert('Thank You!', 'Store listing coming soon. We appreciate your support!');
+                  },
+                },
+              ]
+            );
+          }}
+          py="$3"
+        >
+          <HStack justifyContent="space-between" alignItems="center">
+            <HStack alignItems="center" flex={1}>
+              <Icon name="star" size={24} color={colors.warning} />
+              <VStack ml="$3" flex={1}>
+                <Text fontWeight="$medium" fontSize="$md" color={colors.text} mb="$1">Rate the App</Text>
+                <Text fontSize="$sm" color={colors.textSecondary}>
+                  Help us improve by leaving a review
+                </Text>
+              </VStack>
+            </HStack>
+            <Icon name="chevron-right" size={24} color={colors.textMuted} />
+          </HStack>
+        </Pressable>
+      </Box>
+
       {/* About */}
       <Box mx="$4" mt="$4" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
         <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$4">About</Text>
@@ -350,7 +478,7 @@ const SettingsScreen = ({ navigation }) => {
 
         <HStack justifyContent="space-between" alignItems="center" py="$2">
           <Text fontSize="$md" color={colors.textSecondary}>Developer</Text>
-          <Text fontSize="$md" color={colors.text} fontWeight="$medium">Receipt Tracker Pro</Text>
+          <Text fontSize="$md" color={colors.text} fontWeight="$medium">Receipt Tracker - Benny N.</Text>
         </HStack>
       </Box>
 
