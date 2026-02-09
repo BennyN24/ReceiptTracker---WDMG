@@ -1,18 +1,30 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { GluestackUIProvider } from '@gluestack-ui/themed';
 import AppNavigator from './src/navigation/AppNavigator';
-import { theme, gluestackThemeConfig } from './src/styles/theme';
+import { ThemeProvider, ThemeContext } from './src/context/ThemeContext';
+import { getTheme, gluestackThemeConfig } from './src/styles/theme';
 
-export default function App() {
+function AppContent() {
+  const { isDarkMode } = useContext(ThemeContext);
+  const currentTheme = getTheme(isDarkMode);
+
   return (
     <GluestackUIProvider config={gluestackThemeConfig}>
-      <PaperProvider theme={theme}>
+      <PaperProvider theme={currentTheme}>
         <NavigationContainer>
           <AppNavigator />
         </NavigationContainer>
       </PaperProvider>
     </GluestackUIProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }

@@ -16,11 +16,12 @@ import {
 import StorageService from '../services/StorageService';
 import AnalyticsService from '../services/AnalyticsService';
 import CurrencyService from '../services/CurrencyService';
-import { colors } from '../styles/theme';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 const { width } = Dimensions.get('window');
 
 const AnalyticsScreen = () => {
+  const colors = useThemeColors();
   const [expenses, setExpenses] = useState([]);
   const [budgets, setBudgets] = useState([]);
   const [settings, setSettings] = useState({ currency: 'USD' });

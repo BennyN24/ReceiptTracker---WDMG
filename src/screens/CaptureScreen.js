@@ -21,9 +21,10 @@ import { StorageService } from '../services/StorageService';
 import OCRService from '../services/OCRService';
 import GeminiService from '../services/GeminiService';
 import ImageStorageService from '../services/ImageStorageService';
-import { colors } from '../styles/theme';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 const CaptureScreen = ({ navigation }) => {
+  const colors = useThemeColors();
   const [facing, setFacing] = useState('back');
   const [permission, requestPermission] = useCameraPermissions();
   const [capturedImage, setCapturedImage] = useState(null);
@@ -156,7 +157,7 @@ const CaptureScreen = ({ navigation }) => {
 
     try {
       // Primary: Try Gemini AI analysis
-      setProcessingStage('Sending to Gemini AI...');
+      setProcessingStage('AI Scanning...');
       const geminiResult = await GeminiService.analyzeReceipt(imageUri);
 
       if (geminiResult && !geminiResult.error) {
@@ -390,7 +391,7 @@ const CaptureScreen = ({ navigation }) => {
                   {/* Source badge */}
                   <Box bg={ocrData.source === 'gemini_ai' ? colors.info : colors.primaryLight} borderRadius="$full" px="$3" py="$1" mb="$2">
                     <Text fontSize="$xs" color={colors.white} fontWeight="$semibold">
-                      {ocrData.source === 'gemini_ai' ? 'Gemini AI' : ocrData.source === 'google_cloud_vision' ? 'Cloud Vision' : 'OCR'}
+                      {ocrData.source === 'gemini_ai' ? 'AI' : ocrData.source === 'google_cloud_vision' ? 'Cloud Vision' : 'OCR'}
                     </Text>
                   </Box>
                   {ocrData.confidence !== null && ocrData.confidence !== undefined && (

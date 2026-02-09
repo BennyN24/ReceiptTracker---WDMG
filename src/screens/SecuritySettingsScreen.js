@@ -18,9 +18,10 @@ import {
   Spinner,
 } from '@gluestack-ui/themed';
 import BiometricService from '../services/BiometricService';
-import { colors } from '../styles/theme';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 const SecuritySettingsScreen = () => {
+  const colors = useThemeColors();
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [passcodeSet, setPasscodeSet] = useState(false);

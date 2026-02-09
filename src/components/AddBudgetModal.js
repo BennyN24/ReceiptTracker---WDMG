@@ -17,9 +17,10 @@ import {
   InputField,
 } from '@gluestack-ui/themed';
 import Icon from '@expo/vector-icons/MaterialIcons';
-import { colors } from '../styles/theme';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 const AddBudgetModal = ({ onClose, onSave, visible, initialData }) => {
+  const colors = useThemeColors();
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
   const [period, setPeriod] = useState('monthly');

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import {
   Modal,
 } from 'react-native';
@@ -9,9 +9,10 @@ import {
   VStack,
   Pressable,
 } from '@gluestack-ui/themed';
-import { colors } from '../styles/theme';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 const DeleteConfirmationModal = ({ visible, onConfirm, onCancel, title = 'Delete Item', message = 'Are you sure you want to delete this item?' }) => {
+  const colors = useThemeColors();
   return (
     <Modal
       visible={visible}

@@ -20,6 +20,7 @@ const RecurringExpenseService = {
         startDate: recurringExpense.startDate,
         endDate: recurringExpense.endDate || null,
         notes: recurringExpense.notes || '',
+        receiptImage: recurringExpense.receiptImage || null,
         isActive: true,
         nextDueDate: this._calculateNextDueDate(
           recurringExpense.startDate,

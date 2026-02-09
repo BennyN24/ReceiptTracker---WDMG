@@ -16,11 +16,12 @@ import {
 } from '@gluestack-ui/themed';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CurrencyService from '../services/CurrencyService';
-import { colors } from '../styles/theme';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 const CURRENCY_KEY = '@receipt_tracker_currency';
 
 const CurrencySettingsScreen = () => {
+  const colors = useThemeColors();
   const [selectedCurrency, setSelectedCurrency] = useState('USD');
   const [currencies, setCurrencies] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -1,8 +1,8 @@
-import { DefaultTheme } from 'react-native-paper';
+import { DefaultTheme, MD3DarkTheme } from 'react-native-paper';
 import { config as gluestackConfig } from '@gluestack-ui/config';
 
-// Money Green Color Palette
-export const colors = {
+// Light Mode Color Palette
+export const lightColors = {
   primary: '#16a34a',       // green-600
   primaryDark: '#15803d',   // green-700
   primaryDarker: '#166534', // green-800
@@ -26,21 +26,51 @@ export const colors = {
   black: '#000000',
 };
 
-// React Native Paper theme (kept for backward compat with Paper components still in use)
-export const theme = {
+// Dark Mode Color Palette
+export const darkColors = {
+  primary: '#22c55e',       // green-500 (brighter for dark mode)
+  primaryDark: '#16a34a',   // green-600
+  primaryDarker: '#15803d', // green-700
+  primaryLight: '#4ade80',  // green-400
+  primaryLighter: '#166534',// green-800
+  primaryLightest: '#052e16',// green-950
+  primaryMuted: '#15803d',  // green-700
+  background: '#0f172a',    // slate-900
+  backgroundSecondary: '#1e293b', // slate-800
+  surface: '#1e293b',       // slate-800
+  text: '#333333',          // pure white for maximum contrast
+  textSecondary: '#a8a7a7', // slate-200 (much brighter)
+  textMuted: '#868f9b',     // slate-400 (brighter than before)
+  border: '#334155',        // slate-700
+  borderLight: '#475569',   // slate-600
+  error: '#f87171',         // red-400
+  success: '#4ade80',       // green-400
+  warning: '#fbbf24',       // amber-400
+  info: '#60a5fa',          // blue-400
+  white: '#ffffff',
+  black: '#000000',
+};
+
+// Default to light colors
+export const colors = lightColors;
+
+export const getColors = (isDarkMode) => isDarkMode ? darkColors : lightColors;
+
+// React Native Paper theme (light mode)
+export const lightTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    primary: colors.primary,
-    accent: colors.primaryLight,
-    background: colors.background,
-    surface: colors.surface,
-    text: colors.text,
-    textSecondary: colors.textSecondary,
-    border: colors.border,
-    error: colors.error,
-    success: colors.success,
-    warning: colors.warning,
+    primary: lightColors.primary,
+    accent: lightColors.primaryLight,
+    background: lightColors.background,
+    surface: lightColors.surface,
+    text: lightColors.text,
+    textSecondary: lightColors.textSecondary,
+    border: lightColors.border,
+    error: lightColors.error,
+    success: lightColors.success,
+    warning: lightColors.warning,
   },
   fonts: {
     ...DefaultTheme.fonts,
@@ -63,6 +93,49 @@ export const theme = {
     useNativeDriver: false,
   },
 };
+
+// React Native Paper theme (dark mode)
+export const darkTheme = {
+  ...MD3DarkTheme,
+  colors: {
+    ...MD3DarkTheme.colors,
+    primary: darkColors.primary,
+    accent: darkColors.primaryLight,
+    background: darkColors.background,
+    surface: darkColors.surface,
+    text: darkColors.text,
+    textSecondary: darkColors.textSecondary,
+    border: darkColors.border,
+    error: darkColors.error,
+    success: darkColors.success,
+    warning: darkColors.warning,
+  },
+  fonts: {
+    ...MD3DarkTheme.fonts,
+    regular: {
+      fontFamily: 'System',
+      fontWeight: '400',
+    },
+    medium: {
+      fontFamily: 'System',
+      fontWeight: '500',
+    },
+    bold: {
+      fontFamily: 'System',
+      fontWeight: '700',
+    },
+  },
+  roundness: 12,
+  animation: {
+    scale: 1.0,
+    useNativeDriver: false,
+  },
+};
+
+// Default to light theme
+export const theme = lightTheme;
+
+export const getTheme = (isDarkMode) => isDarkMode ? darkTheme : lightTheme;
 
 // Gluestack UI custom config with money green tokens
 export const gluestackThemeConfig = {

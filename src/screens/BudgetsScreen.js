@@ -20,11 +20,12 @@ import {
 import { ProgressBar, Portal } from 'react-native-paper';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import { StorageService } from '../services/StorageService';
-import { colors } from '../styles/theme';
+import { useThemeColors } from '../hooks/useThemeColors';
 import AddBudgetModal from '../components/AddBudgetModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 
 const BudgetsScreen = ({ navigation }) => {
+  const colors = useThemeColors();
   const [budgets, setBudgets] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [settings, setSettings] = useState({ currency: 'USD' });

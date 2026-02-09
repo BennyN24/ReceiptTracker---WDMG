@@ -26,9 +26,10 @@ import AddExpenseModal from '../components/AddExpenseModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import { StorageService } from '../services/StorageService';
 import RecurringExpenseService from '../services/RecurringExpenseService';
-import { colors } from '../styles/theme';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 const ExpensesScreen = ({ navigation }) => {
+  const colors = useThemeColors();
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
   const [filteredExpenses, setFilteredExpenses] = useState([]);
@@ -120,6 +121,7 @@ const ExpensesScreen = ({ navigation }) => {
           startDate: expenseData.date,
           endDate: null,
           notes: expenseData.description,
+          receiptImage: editingExpense?.receiptImage || null,
         };
         await RecurringExpenseService.createRecurringExpense(recurringData);
       } else {
@@ -202,6 +204,9 @@ const ExpensesScreen = ({ navigation }) => {
           <VStack flex={1}>
             <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$1">{item.vendor}</Text>
             <Text fontSize="$sm" color={colors.textSecondary}>{formatDate(item.date)}</Text>
+            {item.description ? (
+              <Text fontSize="$xs" color={colors.textSecondary} mt="$1" numberOfLines={2}>{item.description}</Text>
+            ) : null}
           </VStack>
           <VStack alignItems="flex-end">
             <Text fontWeight="$bold" fontSize="$md" color={colors.error} mb="$1">{formatCurrency(item.amount)}</Text>
@@ -303,7 +308,7 @@ const ExpensesScreen = ({ navigation }) => {
               <Picker
                 selectedValue={sortBy}
                 onValueChange={(value) => setSortBy(value)}
-                style={{ height: 40 }}
+                style={{ height: 50 }}
               >
                 <Picker.Item label="Newest First" value="newest" />
                 <Picker.Item label="Oldest First" value="oldest" />
@@ -319,7 +324,7 @@ const ExpensesScreen = ({ navigation }) => {
               <Picker
                 selectedValue={selectedCategory || 'all'}
                 onValueChange={(value) => setSelectedCategory(value === 'all' ? null : value)}
-                style={{ height: 40 }}
+                style={{ height: 50 }}
               >
                 <Picker.Item label="All Categories" value="all" />
                 {categories.map((category) => (
@@ -381,6 +386,7 @@ const ExpensesScreen = ({ navigation }) => {
           onSave={handleAddExpense}
           categories={categories}
           initialData={editingExpense}
+          receiptImageUri={editingExpense?.receiptImage}
         />
       )}
 

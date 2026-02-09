@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   Alert,
   Switch,
@@ -22,9 +22,12 @@ import {
 import Icon from '@expo/vector-icons/MaterialIcons';
 import { StorageService } from '../services/StorageService';
 import CurrencyService from '../services/CurrencyService';
-import { colors } from '../styles/theme';
+import { getColors } from '../styles/theme';
+import { ThemeContext } from '../context/ThemeContext';
 
 const SettingsScreen = ({ navigation }) => {
+  const { isDarkMode, toggleDarkMode } = useContext(ThemeContext);
+  const colors = getColors(isDarkMode);
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -289,10 +292,10 @@ const SettingsScreen = ({ navigation }) => {
             </Text>
           </VStack>
           <Switch
-            value={settings.darkMode}
-            onValueChange={(value) => updateSetting('darkMode', value)}
+            value={isDarkMode}
+            onValueChange={(value) => toggleDarkMode(value)}
             trackColor={{ false: '#e2e8f0', true: colors.primaryLighter }}
-            thumbColor={settings.darkMode ? colors.primary : '#ffffff'}
+            thumbColor={isDarkMode ? colors.primary : '#ffffff'}
           />
         </HStack>
       </Box>

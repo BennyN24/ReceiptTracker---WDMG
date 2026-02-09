@@ -1,6 +1,7 @@
 import ImageStorageService from './ImageStorageService';
 import { API_ENDPOINTS } from '../config/api';
 import * as Crypto from 'expo-crypto';
+import CurrencyService from './CurrencyService';
 
 let _clientId = null;
 
@@ -129,10 +130,15 @@ const GeminiService = {
       source: 'gemini_ai',
     };
 
-    // Build description from items if not provided
-    if (!sanitized.description && sanitized.items.length > 0) {
+    // Build description from items (always prefer itemized list over generic AI description)
+    if (sanitized.items.length > 0) {
       sanitized.description = sanitized.items
-        .map(i => i.name + (i.price ? ` - $${i.price.toFixed(2)}` : ''))
+        .map(i => {
+          let line = i.quantity > 1 ? `${i.quantity}x ` : '';
+          line += i.name;
+          if (i.price) line += ` - ${CurrencyService.getSymbol(sanitized.currency)}${i.price.toFixed(2)}`;
+          return line;
+        })
         .join('\n');
     }
 

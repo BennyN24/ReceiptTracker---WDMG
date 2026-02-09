@@ -3,7 +3,7 @@
 // e.g. 'http://192.168.1.9:3000'
 const USE_LOCAL_API = false;
 const LOCAL_API_URL = 'http://192.168.1.9:3000';
-const PRODUCTION_API_URL = 'https://receipt-tracker-benny.vercel.app';
+const PRODUCTION_API_URL = 'https://receipt-tracker-pi.vercel.app';
 
 export const API_BASE_URL = USE_LOCAL_API ? LOCAL_API_URL : PRODUCTION_API_URL;
 

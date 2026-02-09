@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   Alert,
   Modal,
   Image,
+  Dimensions,
+  StatusBar,
 } from 'react-native';
 import {
   Portal,
@@ -18,10 +20,12 @@ import {
   InputField,
 } from '@gluestack-ui/themed';
 import Icon from '@expo/vector-icons/MaterialIcons';
-import DatePicker from 'react-native-date-picker';
-import { colors } from '../styles/theme';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 const AddExpenseModal = ({ onClose, onSave, categories, initialData, receiptImageUri }) => {
+  const colors = useThemeColors();
+  const [showFullImage, setShowFullImage] = useState(false);
   const [vendor, setVendor] = useState(initialData?.vendor || '');
   const [amount, setAmount] = useState(
     initialData?.amount ? String(initialData.amount) : ''
@@ -134,27 +138,29 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData, receiptImag
 
         <ScrollView flex={1} p="$4" showsVerticalScrollIndicator={false}>
           {/* Receipt Image Preview */}
-          {receiptImageUri && (
+          {(receiptImageUri || initialData?.receiptImage) && (
             <VStack mb="$6">
               <HStack alignItems="center" justifyContent="space-between" mb="$2">
                 <Text fontWeight="$semibold" fontSize="$md" color={colors.text}>Receipt Image</Text>
                 <HStack alignItems="center">
-                  <Icon name="check-circle" size={16} color={colors.success} />
-                  <Text fontSize="$xs" color={colors.success} ml="$1">Saved</Text>
+                  <Icon name="fullscreen" size={18} color={colors.textSecondary} />
+                  <Text fontSize="$xs" color={colors.textSecondary} ml="$1">Tap to zoom</Text>
                 </HStack>
               </HStack>
-              <Box
-                borderRadius="$lg"
-                borderWidth={1}
-                borderColor={colors.border}
-                overflow="hidden"
-                bg={colors.backgroundSecondary}
-              >
-                <Image
-                  source={{ uri: receiptImageUri }}
-                  style={{ width: '100%', height: 200, resizeMode: 'contain' }}
-                />
-              </Box>
+              <Pressable onPress={() => setShowFullImage(true)}>
+                <Box
+                  borderRadius="$lg"
+                  borderWidth={1}
+                  borderColor={colors.border}
+                  overflow="hidden"
+                  bg={colors.backgroundSecondary}
+                >
+                  <Image
+                    source={{ uri: receiptImageUri || initialData?.receiptImage }}
+                    style={{ width: '100%', height: 200, resizeMode: 'contain' }}
+                  />
+                </Box>
+              </Pressable>
             </VStack>
           )}
 
@@ -347,35 +353,74 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData, receiptImag
           </VStack>
         </ScrollView>
 
-        {/* Date Picker Modal */}
+        {/* Full-Screen Image Viewer Modal */}
         <Modal
-          visible={showDatePicker}
+          visible={showFullImage}
           transparent={true}
-          animationType="slide"
-          onRequestClose={() => setShowDatePicker(false)}
+          animationType="fade"
+          onRequestClose={() => setShowFullImage(false)}
+          statusBarTranslucent
         >
-          <Box flex={1} bg="rgba(0, 0, 0, 0.5)" justifyContent="flex-end">
-            <Box bg={colors.white} borderTopLeftRadius="$2xl" borderTopRightRadius="$2xl" p="$4">
-              <HStack justifyContent="space-between" alignItems="center" mb="$4">
-                <Pressable onPress={() => setShowDatePicker(false)}>
-                  <Text color={colors.textSecondary} fontWeight="$medium">Cancel</Text>
-                </Pressable>
-                <Text fontWeight="$semibold" fontSize="$lg" color={colors.text}>Select Date</Text>
-                <Pressable onPress={() => handleDateChange(date)}>
-                  <Text color={colors.primary} fontWeight="$semibold">Done</Text>
-                </Pressable>
-              </HStack>
-              <Box alignItems="center" py="$4">
-                <DatePicker
-                  date={date}
-                  onDateChange={setDate}
-                  mode="date"
-                  maximumDate={new Date()}
-                />
-              </Box>
-            </Box>
+          <Box flex={1} bg="rgba(0, 0, 0, 0.95)">
+            <HStack
+              position="absolute"
+              top={0}
+              left={0}
+              right={0}
+              zIndex={10}
+              justifyContent="space-between"
+              alignItems="center"
+              px="$4"
+              pt="$12"
+              pb="$3"
+            >
+              <Pressable onPress={() => setShowFullImage(false)} p="$2">
+                <Icon name="close" size={28} color="#FFFFFF" />
+              </Pressable>
+              <Text fontWeight="$semibold" fontSize="$md" color="#FFFFFF">Receipt Image</Text>
+              <Box w={44} />
+            </HStack>
+            <ScrollView
+              flex={1}
+              contentContainerStyle={{
+                flexGrow: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+              maximumZoomScale={5}
+              minimumZoomScale={1}
+              showsVerticalScrollIndicator={false}
+              showsHorizontalScrollIndicator={false}
+              bouncesZoom={true}
+            >
+              <Image
+                source={{ uri: receiptImageUri || initialData?.receiptImage }}
+                style={{
+                  width: Dimensions.get('window').width,
+                  height: Dimensions.get('window').height * 0.85,
+                  resizeMode: 'contain',
+                }}
+              />
+            </ScrollView>
           </Box>
         </Modal>
+
+        {/* Date Picker Modal */}
+        {showDatePicker && (
+          <DateTimePicker
+            value={date}
+            mode="date"
+            display="spinner"
+            onChange={(event, selectedDate) => {
+              if (event.type === 'set' && selectedDate) {
+                handleDateChange(selectedDate);
+              } else if (event.type === 'dismissed') {
+                setShowDatePicker(false);
+              }
+            }}
+            maximumDate={new Date()}
+          />
+        )}
       </Box>
     </Portal>
   );

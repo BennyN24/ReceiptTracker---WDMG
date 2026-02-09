@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useContext } from 'react';
 import {
   StyleSheet,
   Alert,
@@ -24,11 +24,15 @@ import { PieChart, BarChart } from 'react-native-chart-kit';
 import { useFocusEffect } from '@react-navigation/native';
 import { StorageService } from '../services/StorageService';
 import AnalyticsService from '../services/AnalyticsService';
-import { colors } from '../styles/theme';
+import CurrencyService from '../services/CurrencyService';
+import { useThemeColors } from '../hooks/useThemeColors';
+import { ThemeContext } from '../context/ThemeContext';
 
 const screenWidth = Dimensions.get('window').width;
 
 const DashboardScreen = ({ navigation }) => {
+  const colors = useThemeColors();
+  const { isDarkMode } = useContext(ThemeContext);
   const [expenses, setExpenses] = useState([]);
   const [budgets, setBudgets] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -273,7 +277,7 @@ const DashboardScreen = ({ navigation }) => {
     >
       {/* Header */}
       <Box px="$5" pt="$10" pb="$4">
-        <Heading size="2xl" color={colors.text} mb="$2">Track Expenses</Heading>
+        <Heading size="2xl" color={isDarkMode ? '#ffffff' : colors.text} mb="$2">Track Expenses</Heading>
         <Text color={colors.textSecondary} fontSize="$md">Welcome back, your finances are on track.</Text>
       </Box>
 
@@ -343,15 +347,17 @@ const DashboardScreen = ({ navigation }) => {
           </VStack>
         ) : (
           recentExpenses.map((expense) => (
-            <HStack key={expense.id} justifyContent="space-between" alignItems="center" py="$3" borderBottomWidth={1} borderBottomColor={colors.borderLight}>
-              <VStack flex={1}>
-                <Text fontWeight="$medium" fontSize="$md" color={colors.text} mb="$1">{expense.vendor}</Text>
-                <Text fontSize="$sm" color={colors.textSecondary}>{formatDate(expense.date)}</Text>
-              </VStack>
-              <Text fontWeight="$semibold" fontSize="$md" color={colors.error}>
-                {formatCurrency(expense.amount)}
-              </Text>
-            </HStack>
+            <Pressable key={expense.id} onPress={() => navigation.navigate('Expenses')}>
+              <HStack justifyContent="space-between" alignItems="center" py="$3" borderBottomWidth={1} borderBottomColor={colors.borderLight}>
+                <VStack flex={1}>
+                  <Text fontWeight="$medium" fontSize="$md" color={colors.text} mb="$1">{expense.vendor}</Text>
+                  <Text fontSize="$sm" color={colors.textSecondary}>{formatDate(expense.date)}</Text>
+                </VStack>
+                <Text fontWeight="$semibold" fontSize="$md" color={colors.error}>
+                  {formatCurrency(expense.amount)}
+                </Text>
+              </HStack>
+            </Pressable>
           ))
         )}
       </Box>
@@ -489,7 +495,7 @@ const DashboardScreen = ({ navigation }) => {
                 data={currentTrendData}
                 width={screenWidth - 80}
                 height={220}
-                yAxisLabel="$"
+                yAxisLabel={CurrencyService.getSymbol(settings.currency || 'USD')}
                 yAxisSuffix=""
                 chartConfig={{
                   backgroundColor: 'transparent',

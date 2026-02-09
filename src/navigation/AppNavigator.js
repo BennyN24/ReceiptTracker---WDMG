@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { View } from 'react-native';
@@ -11,6 +11,7 @@ import CaptureScreen from '../screens/CaptureScreen';
 import BudgetsScreen from '../screens/BudgetsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import AddExpenseModal from '../components/AddExpenseModal';
+import SplashScreen from '../screens/SplashScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -40,7 +41,7 @@ const BudgetsStack = () => (
   </Stack.Navigator>
 );
 
-const AppNavigator = () => {
+const MainTabNavigator = () => {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -55,8 +56,8 @@ const AppNavigator = () => {
             iconName = 'photo-camera';
             return (
               <View style={{
-                width: 56,
-                height: 56,
+                width: 60,
+                height: 60,
                 borderRadius: 28,
                 backgroundColor: '#16a34a',
                 justifyContent: 'center',
@@ -120,6 +121,24 @@ const AppNavigator = () => {
       />
     </Tab.Navigator>
   );
+};
+
+const AppNavigator = () => {
+  const [isSplashVisible, setIsSplashVisible] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsSplashVisible(false);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isSplashVisible) {
+    return <SplashScreen />;
+  }
+
+  return <MainTabNavigator />;
 };
 
 export default AppNavigator;
