@@ -25,6 +25,7 @@ import { StorageService } from '../services/StorageService';
 import ExportService from '../services/ExportService';
 import CurrencyService from '../services/CurrencyService';
 import NotificationService from '../services/NotificationService';
+import BiometricService from '../services/BiometricService';
 import { getColors } from '../styles/theme';
 import { ThemeContext } from '../context/ThemeContext';
 
@@ -38,6 +39,8 @@ const SettingsScreen = ({ navigation }) => {
   const [tempBudget, setTempBudget] = useState('');
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [currencies, setCurrencies] = useState([]);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -50,6 +53,10 @@ const SettingsScreen = ({ navigation }) => {
       setTempBudget(settingsData.monthlyBudget?.toString() || '1550');
       const currencyList = CurrencyService.getAllCurrencies();
       setCurrencies(currencyList);
+      const bioAvailable = await BiometricService.isBiometricAvailable();
+      setBiometricAvailable(bioAvailable);
+      const bioEnabled = await BiometricService.isBiometricEnabled();
+      setBiometricEnabled(bioEnabled);
     } catch (error) {
       Alert.alert('Error', 'Failed to load settings');
     } finally {
@@ -93,6 +100,43 @@ const SettingsScreen = ({ navigation }) => {
       Alert.alert('Success', `Currency changed to ${currencyCode}`);
     } catch (error) {
       Alert.alert('Error', 'Failed to change currency');
+    }
+  };
+
+  const handleBiometricToggle = async (value) => {
+    try {
+      if (value) {
+        const available = await BiometricService.isBiometricAvailable();
+        if (!available) {
+          Alert.alert(
+            'Biometric Not Available',
+            'Your device does not support biometric authentication or no biometrics are enrolled. Please set up biometrics in your device settings first.'
+          );
+          return;
+        }
+
+        // Verify biometric works before enabling
+        const result = await BiometricService.enableBiometric();
+        if (result) {
+          setBiometricEnabled(true);
+          await updateSetting('biometricAuth', true);
+          Alert.alert('Success', 'Biometric authentication enabled. You will be prompted to authenticate when opening the app.');
+        } else {
+          Alert.alert('Error', 'Failed to enable biometric authentication');
+        }
+      } else {
+        const result = await BiometricService.disableBiometric();
+        if (result) {
+          setBiometricEnabled(false);
+          await updateSetting('biometricAuth', false);
+          Alert.alert('Success', 'Biometric authentication disabled');
+        } else {
+          Alert.alert('Error', 'Failed to disable biometric authentication');
+        }
+      }
+    } catch (error) {
+      console.error('Toggle biometric error:', error);
+      Alert.alert('Error', 'Failed to update biometric settings');
     }
   };
 
@@ -332,6 +376,26 @@ const SettingsScreen = ({ navigation }) => {
             onValueChange={(value) => toggleDarkMode(value)}
             trackColor={{ false: '#e2e8f0', true: colors.primaryLighter }}
             thumbColor={isDarkMode ? colors.primary : '#ffffff'}
+          />
+        </HStack>
+
+        <Divider my="$4" />
+
+        <HStack justifyContent="space-between" alignItems="center" py="$2">
+          <VStack flex={1} mr="$4">
+            <Text fontWeight="$medium" fontSize="$md" color={colors.text} mb="$1">Biometric Authentication</Text>
+            <Text fontSize="$sm" color={colors.textSecondary}>
+              {biometricAvailable
+                ? 'Use fingerprint or face recognition to lock the app'
+                : 'Biometric authentication is not available on this device'}
+            </Text>
+          </VStack>
+          <Switch
+            value={biometricEnabled}
+            onValueChange={handleBiometricToggle}
+            disabled={!biometricAvailable}
+            trackColor={{ false: '#e2e8f0', true: colors.primaryLighter }}
+            thumbColor={biometricEnabled ? colors.primary : '#ffffff'}
           />
         </HStack>
       </Box>

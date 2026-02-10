@@ -1,5 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import * as Crypto from 'expo-crypto';
+import * as LocalAuthentication from 'expo-local-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BIOMETRIC_ENABLED_KEY = '@receipt_tracker_biometric_enabled';
@@ -13,13 +14,9 @@ const BiometricService = {
    */
   async isBiometricAvailable() {
     try {
-      // This is a placeholder - in production, use expo-local-authentication
-      // import * as LocalAuthentication from 'expo-local-authentication';
-      // const compatible = await LocalAuthentication.hasHardwareAsync();
-      // const enrolled = await LocalAuthentication.isEnrolledAsync();
-      // return compatible && enrolled;
-
-      return false; // Placeholder
+      const compatible = await LocalAuthentication.hasHardwareAsync();
+      const enrolled = await LocalAuthentication.isEnrolledAsync();
+      return compatible && enrolled;
     } catch (error) {
       console.error('Biometric availability check error:', error);
       return false;
@@ -31,15 +28,12 @@ const BiometricService = {
    */
   async getAvailableBiometricTypes() {
     try {
-      // Placeholder - in production:
-      // const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
-      // return types.map(type => {
-      //   if (type === LocalAuthentication.AuthenticationType.FINGERPRINT) return 'fingerprint';
-      //   if (type === LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION) return 'face';
-      //   return 'iris';
-      // });
-
-      return [];
+      const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+      return types.map(type => {
+        if (type === LocalAuthentication.AuthenticationType.FINGERPRINT) return 'fingerprint';
+        if (type === LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION) return 'face';
+        return 'iris';
+      });
     } catch (error) {
       console.error('Get biometric types error:', error);
       return [];
@@ -100,14 +94,13 @@ const BiometricService = {
         return false;
       }
 
-      // Placeholder - in production:
-      // const result = await LocalAuthentication.authenticateAsync({
-      //   disableDeviceFallback: false,
-      //   reason: 'Authenticate to access ReceiptTracker',
-      // });
-      // return result.success;
-
-      return true; // Placeholder
+      const result = await LocalAuthentication.authenticateAsync({
+        disableDeviceFallback: true,
+        promptMessage: 'Authenticate to access Receipt Tracker',
+        cancelLabel: 'Cancel',
+        fallbackLabel: 'Use Passcode',
+      });
+      return result.success;
     } catch (error) {
       console.error('Biometric authentication error:', error);
       return false;
