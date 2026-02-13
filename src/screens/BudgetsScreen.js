@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Alert,
   Modal,
@@ -19,6 +19,7 @@ import {
 } from '@gluestack-ui/themed';
 import { ProgressBar, Portal } from 'react-native-paper';
 import Icon from '@expo/vector-icons/MaterialIcons';
+import { useFocusEffect } from '@react-navigation/native';
 import { StorageService } from '../services/StorageService';
 import { useThemeColors } from '../hooks/useThemeColors';
 import AddBudgetModal from '../components/AddBudgetModal';
@@ -40,6 +41,12 @@ const BudgetsScreen = ({ navigation }) => {
   useEffect(() => {
     loadData();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
 
   const loadData = async () => {
     try {
