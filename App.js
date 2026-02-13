@@ -8,6 +8,8 @@ import { getTheme, gluestackThemeConfig } from './src/styles/theme';
 import NotificationService from './src/services/NotificationService';
 import RecurringExpenseService from './src/services/RecurringExpenseService';
 import { StorageService } from './src/services/StorageService';
+import LocationService from './src/services/LocationService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function AppContent() {
   const { isDarkMode } = useContext(ThemeContext);
@@ -39,7 +41,40 @@ function AppContent() {
       }
     };
 
+    const initLocationCurrency = async () => {
+      try {
+        const settings = await StorageService.getSettings();
+
+        // Only auto-detect if enabled and not yet attempted
+        if (settings.autoDetectCurrency && !settings.locationDetectionAttempted) {
+          const result = await LocationService.detectCurrency();
+
+          if (result) {
+            const updatedSettings = {
+              ...settings,
+              currency: result.currencyCode,
+              locationDetectionAttempted: true,
+              detectedCountryCode: result.countryCode,
+            };
+            await StorageService.saveSettings(updatedSettings);
+
+            // Also update the CurrencySettingsScreen storage key
+            await AsyncStorage.setItem('@receipt_tracker_currency', result.currencyCode);
+          } else {
+            // Mark as attempted even if detection failed
+            await StorageService.saveSettings({
+              ...settings,
+              locationDetectionAttempted: true,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Location currency detection error:', error);
+      }
+    };
+
     initNotifications();
+    initLocationCurrency();
   }, []);
 
   return (

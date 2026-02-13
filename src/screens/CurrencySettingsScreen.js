@@ -3,6 +3,7 @@ import {
   FlatList,
   Alert,
   RefreshControl,
+  Switch,
 } from 'react-native';
 import {
   Box,
@@ -14,8 +15,11 @@ import {
   ScrollView,
   Spinner,
 } from '@gluestack-ui/themed';
+import Icon from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CurrencyService from '../services/CurrencyService';
+import LocationService from '../services/LocationService';
+import { StorageService } from '../services/StorageService';
 import { useThemeColors } from '../hooks/useThemeColors';
 
 const CURRENCY_KEY = '@receipt_tracker_currency';
@@ -26,6 +30,9 @@ const CurrencySettingsScreen = () => {
   const [currencies, setCurrencies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [autoDetect, setAutoDetect] = useState(true);
+  const [detectedCountry, setDetectedCountry] = useState(null);
+  const [detecting, setDetecting] = useState(false);
 
   useEffect(() => {
     loadCurrencySettings();
@@ -41,6 +48,11 @@ const CurrencySettingsScreen = () => {
 
       const currencyList = CurrencyService.getAllCurrencies();
       setCurrencies(currencyList);
+
+      // Load location detection settings
+      const settings = await StorageService.getSettings();
+      setAutoDetect(settings.autoDetectCurrency ?? true);
+      setDetectedCountry(settings.detectedCountryCode || null);
     } catch (error) {
       console.error('Load currency settings error:', error);
     } finally {
@@ -58,10 +70,71 @@ const CurrencySettingsScreen = () => {
     try {
       await AsyncStorage.setItem(CURRENCY_KEY, currencyCode);
       setSelectedCurrency(currencyCode);
+
+      // Also update settings currency
+      const settings = await StorageService.getSettings();
+      await StorageService.saveSettings({ ...settings, currency: currencyCode });
+
       Alert.alert('Success', `Currency changed to ${currencyCode}`);
     } catch (error) {
       console.error('Change currency error:', error);
       Alert.alert('Error', 'Failed to change currency');
+    }
+  };
+
+  const handleAutoDetectToggle = async (value) => {
+    try {
+      setAutoDetect(value);
+      const settings = await StorageService.getSettings();
+      await StorageService.saveSettings({
+        ...settings,
+        autoDetectCurrency: value,
+        // Reset detection flag so it re-detects on next app launch if re-enabled
+        locationDetectionAttempted: value ? false : settings.locationDetectionAttempted,
+      });
+    } catch (error) {
+      console.error('Toggle auto-detect error:', error);
+      Alert.alert('Error', 'Failed to update setting');
+    }
+  };
+
+  const handleDetectNow = async () => {
+    try {
+      setDetecting(true);
+
+      // Clear cache to force fresh detection
+      await LocationService.clearCache();
+
+      const result = await LocationService.detectCurrency();
+
+      if (result) {
+        setDetectedCountry(result.countryCode);
+        setSelectedCurrency(result.currencyCode);
+        await AsyncStorage.setItem(CURRENCY_KEY, result.currencyCode);
+
+        const settings = await StorageService.getSettings();
+        await StorageService.saveSettings({
+          ...settings,
+          currency: result.currencyCode,
+          detectedCountryCode: result.countryCode,
+          locationDetectionAttempted: true,
+        });
+
+        Alert.alert(
+          'Location Detected',
+          `Country: ${result.countryCode}\nCurrency set to: ${result.currencyCode} (${CurrencyService.getName(result.currencyCode)})`
+        );
+      } else {
+        Alert.alert(
+          'Detection Failed',
+          'Could not detect your location. Please ensure location permissions are granted and try again.'
+        );
+      }
+    } catch (error) {
+      console.error('Detect location error:', error);
+      Alert.alert('Error', 'Failed to detect location');
+    } finally {
+      setDetecting(false);
     }
   };
 
@@ -129,6 +202,60 @@ const CurrencySettingsScreen = () => {
             </Text>
           </VStack>
         </HStack>
+      </Box>
+
+      {/* Location Detection */}
+      <Box mx="$4" my="$3" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
+        <HStack alignItems="center" mb="$3">
+          <Icon name="my-location" size={20} color={colors.primary} />
+          <Text fontWeight="$semibold" fontSize="$md" color={colors.text} ml="$2">Location Detection</Text>
+        </HStack>
+
+        <HStack justifyContent="space-between" alignItems="center" py="$2">
+          <VStack flex={1}>
+            <Text fontSize="$sm" fontWeight="$medium" color={colors.text}>Auto-detect currency</Text>
+            <Text fontSize="$xs" color={colors.textSecondary} mt="$0.5">
+              Automatically set currency based on your location
+            </Text>
+          </VStack>
+          <Switch
+            value={autoDetect}
+            onValueChange={handleAutoDetectToggle}
+            trackColor={{ false: colors.border, true: colors.primaryLight || colors.primary }}
+            thumbColor={autoDetect ? colors.primary : colors.textSecondary}
+          />
+        </HStack>
+
+        {detectedCountry && (
+          <HStack alignItems="center" py="$2" mt="$1">
+            <Icon name="place" size={16} color={colors.textSecondary} />
+            <Text fontSize="$sm" color={colors.textSecondary} ml="$1">
+              Detected country: {detectedCountry}
+            </Text>
+          </HStack>
+        )}
+
+        <Pressable
+          onPress={handleDetectNow}
+          disabled={detecting}
+          bg={colors.primary}
+          borderRadius="$lg"
+          py="$2.5"
+          alignItems="center"
+          mt="$3"
+          opacity={detecting ? 0.6 : 1}
+        >
+          <HStack alignItems="center" space="$2">
+            {detecting ? (
+              <Spinner size="small" color={colors.white} />
+            ) : (
+              <Icon name="gps-fixed" size={18} color="#FFFFFF" />
+            )}
+            <Text color="#FFFFFF" fontWeight="$medium" fontSize="$sm">
+              {detecting ? 'Detecting...' : 'Detect Location Now'}
+            </Text>
+          </HStack>
+        </Pressable>
       </Box>
 
       {/* Select Currency */}

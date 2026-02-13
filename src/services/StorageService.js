@@ -496,6 +496,9 @@ export const StorageService = {
       biometricAuth: false,
       autoBackup: false,
       passcodeLock: false,
+      autoDetectCurrency: true,
+      locationDetectionAttempted: false,
+      detectedCountryCode: '',
     };
   },
 
@@ -606,6 +609,7 @@ export const StorageService = {
         const allowedKeys = [
           'monthlyBudget', 'currency', 'notifications',
           'darkMode', 'biometricAuth', 'autoBackup', 'passcodeLock',
+          'autoDetectCurrency', 'locationDetectionAttempted', 'detectedCountryCode',
         ];
         const sanitizedSettings = {};
         const defaults = this.getDefaultSettings();
