@@ -12,6 +12,8 @@ import BudgetsScreen from '../screens/BudgetsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import AddExpenseModal from '../components/AddExpenseModal';
 import SplashScreen from '../screens/SplashScreen';
+import BiometricLockScreen from '../screens/BiometricLockScreen';
+import BiometricService from '../services/BiometricService';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -126,6 +128,8 @@ const MainTabNavigator = () => {
 
 const AppNavigator = () => {
   const [isSplashVisible, setIsSplashVisible] = useState(true);
+  const [isLocked, setIsLocked] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -135,8 +139,28 @@ const AppNavigator = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  if (isSplashVisible) {
+  useEffect(() => {
+    const checkBiometricLock = async () => {
+      try {
+        const enabled = await BiometricService.isBiometricEnabled();
+        setIsLocked(enabled);
+      } catch (error) {
+        console.error('Biometric check error:', error);
+        setIsLocked(false);
+      } finally {
+        setCheckingAuth(false);
+      }
+    };
+
+    checkBiometricLock();
+  }, []);
+
+  if (isSplashVisible || checkingAuth) {
     return <SplashScreen />;
+  }
+
+  if (isLocked) {
+    return <BiometricLockScreen onAuthenticated={() => setIsLocked(false)} />;
   }
 
   return <MainTabNavigator />;
