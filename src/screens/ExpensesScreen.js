@@ -92,7 +92,7 @@ const ExpensesScreen = ({ navigation }) => {
     try {
       const [expensesData, categoriesData, settingsData] = await Promise.all([
         StorageService.getExpenses(),
-        StorageService.getCategories(),
+        StorageService.getAllCategories(),
         StorageService.getSettings(),
       ]);
       
@@ -299,7 +299,7 @@ const ExpensesScreen = ({ navigation }) => {
   }
 
   return (
-    <Box flex={1} bg={colors.backgroundSecondary}>
+    <Box flex={1} bg={colors.backgroundSecondary} pt="$16">
       {/* Header with Search and Recurring Button */}
       <Box bg={colors.white} borderBottomWidth={1} borderBottomColor={colors.border}>
         <HStack p="$4" alignItems="center" justifyContent="space-between" mb="$2">

@@ -276,7 +276,7 @@ const DashboardScreen = ({ navigation }) => {
       }
     >
       {/* Header */}
-      <Box px="$5" pt="$10" pb="$4">
+      <Box px="$5" pt="$16" pb="$4">
         <Heading size="2xl" color={isDarkMode ? '#ffffff' : colors.text} mb="$2">Track Expenses</Heading>
         <Text color={colors.textSecondary} fontSize="$md">Welcome back, your finances are on track.</Text>
       </Box>

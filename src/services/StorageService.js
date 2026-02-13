@@ -412,6 +412,57 @@ export const StorageService = {
     ];
   },
 
+  async addCategory(category) {
+    try {
+      if (!category.name || !category.name.trim()) {
+        throw new Error('Category name is required');
+      }
+      const categories = await this.getCategories();
+      const newCategory = {
+        ...category,
+        id: `custom_${Date.now()}`,
+        name: category.name.trim(),
+        icon: category.icon || 'label',
+        color: category.color || '#6366f1',
+      };
+      categories.push(newCategory);
+      await this.saveCategories(categories);
+      return newCategory;
+    } catch (error) {
+      console.error('Error adding category:', error);
+      throw new Error(`Failed to add category: ${error.message}`);
+    }
+  },
+
+  async getAllCategories() {
+    try {
+      const [categories, budgets] = await Promise.all([
+        this.getCategories(),
+        this.getBudgets(),
+      ]);
+
+      const categoryIds = new Set(categories.map(c => c.id));
+      const budgetCategories = budgets
+        .filter(b => b.categoryId && !categoryIds.has(b.categoryId))
+        .map(b => ({
+          id: b.categoryId,
+          name: b.name,
+          icon: 'label',
+          color: '#6366f1',
+        }));
+
+      // Deduplicate budget categories by id
+      const uniqueBudgetCategories = budgetCategories.filter(
+        (cat, index, self) => self.findIndex(c => c.id === cat.id) === index
+      );
+
+      return [...categories, ...uniqueBudgetCategories];
+    } catch (error) {
+      console.error('Error getting all categories:', error);
+      return this.getDefaultCategories();
+    }
+  },
+
   // Settings
   async getSettings() {
     try {

@@ -48,7 +48,7 @@ const CaptureScreen = ({ navigation }) => {
 
   const loadCategories = async () => {
     try {
-      const categoriesData = await StorageService.getCategories();
+      const categoriesData = await StorageService.getAllCategories();
       setCategories(categoriesData);
     } catch (error) {
       console.error('Error loading categories:', error);

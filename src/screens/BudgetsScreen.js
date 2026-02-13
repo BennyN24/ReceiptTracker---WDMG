@@ -29,11 +29,11 @@ const BudgetsScreen = ({ navigation }) => {
   const colors = useThemeColors();
   const [budgets, setBudgets] = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [settings, setSettings] = useState({ currency: 'USD' });
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [availablePresets, setAvailablePresets] = useState([]);
   const [editingBudget, setEditingBudget] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingBudgetId, setDeletingBudgetId] = useState(null);
@@ -50,17 +50,17 @@ const BudgetsScreen = ({ navigation }) => {
 
   const loadData = async () => {
     try {
-      const [budgetsData, expensesData, settingsData, presetsData] = await Promise.all([
+      const [budgetsData, expensesData, categoriesData, settingsData] = await Promise.all([
         StorageService.getBudgets(),
         StorageService.getExpenses(),
+        StorageService.getAllCategories(),
         StorageService.getSettings(),
-        StorageService.getAvailablePresetBudgets(),
       ]);
       
       setBudgets(budgetsData);
       setExpenses(expensesData);
+      setCategories(categoriesData);
       setSettings(settingsData);
-      setAvailablePresets(presetsData);
     } catch (error) {
       Alert.alert('Error', 'Failed to load data');
     } finally {
@@ -99,7 +99,10 @@ const BudgetsScreen = ({ navigation }) => {
   const getBudgetSpent = useMemo(() => {
     return (budget) => {
       const periodExpenses = getCurrentPeriodExpenses(budget.period, budget.createdAt);
-      return periodExpenses.reduce((total, expense) => total + expense.amount, 0);
+      const categoryExpenses = budget.categoryId
+        ? periodExpenses.filter(expense => expense.category === budget.categoryId)
+        : periodExpenses;
+      return categoryExpenses.reduce((total, expense) => total + expense.amount, 0);
     };
   }, [getCurrentPeriodExpenses]);
 
@@ -152,15 +155,6 @@ const BudgetsScreen = ({ navigation }) => {
     setDeletingBudgetId(null);
   };
 
-  const handleAddPresetBudget = async (categoryId) => {
-    try {
-      await StorageService.addPresetBudget(categoryId);
-      await loadData();
-    } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to add preset budget');
-    }
-  };
-
   const formatCurrency = (amount, currency = null) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -174,23 +168,35 @@ const BudgetsScreen = ({ navigation }) => {
     return '#10b981';
   };
 
+  const getCategoryForBudget = (budget) => {
+    return categories.find(c => c.id === budget.categoryId);
+  };
+
   const renderBudgetItem = useMemo(() => {
     return (budget) => {
       const spent = getBudgetSpent(budget);
       const percentage = getBudgetPercentage(budget);
       const remaining = budget.amount - spent;
       const progressColor = getProgressColor(percentage);
+      const category = getCategoryForBudget(budget);
 
       return (
         <Pressable key={budget.id} onPress={() => handleEditBudget(budget)}>
           <Box mb="$4" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
             <HStack justifyContent="space-between" alignItems="flex-start" mb="$3">
-              <VStack flex={1}>
-                <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$1">{budget.name}</Text>
-                <Text fontSize="$sm" color={colors.textSecondary}>
-                  {budget.period.charAt(0).toUpperCase() + budget.period.slice(1)}
-                </Text>
-              </VStack>
+              <HStack flex={1} alignItems="center" space="sm">
+                {category && (
+                  <Box bg={category.color + '20'} borderRadius="$full" p="$2">
+                    <Icon name={category.icon} size={20} color={category.color} />
+                  </Box>
+                )}
+                <VStack flex={1}>
+                  <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$1">{budget.name}</Text>
+                  <Text fontSize="$sm" color={colors.textSecondary}>
+                    {budget.period.charAt(0).toUpperCase() + budget.period.slice(1)}
+                  </Text>
+                </VStack>
+              </HStack>
               <Pressable
                 onPress={(e) => {
                   e.stopPropagation();
@@ -225,44 +231,7 @@ const BudgetsScreen = ({ navigation }) => {
         </Pressable>
       );
     };
-  }, [getBudgetSpent, getBudgetPercentage, getProgressColor, formatCurrency, handleEditBudget, handleDeleteBudget]);
-
-  const renderPresetBudgets = () => {
-    if (availablePresets.length === 0) return null;
-
-    return (
-      <Box mb="$6">
-        <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$3" px="$4">Quick Add Preset Budgets</Text>
-        <VStack space="sm" px="$4">
-          {availablePresets.map((preset) => (
-            <Pressable
-              key={preset.categoryId}
-              onPress={() => handleAddPresetBudget(preset.categoryId)}
-              bg={colors.white}
-              borderRadius="$lg"
-              p="$4"
-              flexDirection="row"
-              justifyContent="space-between"
-              alignItems="center"
-              borderWidth={1}
-              borderColor={colors.border}
-              shadowColor={colors.black}
-              shadowOffset={{ width: 0, height: 1 }}
-              shadowOpacity={0.06}
-              shadowRadius={4}
-              elevation={2}
-            >
-              <VStack flex={1}>
-                <Text fontWeight="$semibold" fontSize="$md" color={colors.text}>{preset.name}</Text>
-                <Text fontSize="$sm" color={colors.textSecondary}>{formatCurrency(preset.amount)}/month</Text>
-              </VStack>
-              <Icon name="add-circle-outline" size={24} color={colors.primary} />
-            </Pressable>
-          ))}
-        </VStack>
-      </Box>
-    );
-  };
+  }, [getBudgetSpent, getBudgetPercentage, getProgressColor, formatCurrency, handleEditBudget, handleDeleteBudget, categories]);
 
   const renderEmptyState = () => (
     <VStack alignItems="center" justifyContent="center" py="$16" px="$8">
@@ -313,13 +282,9 @@ const BudgetsScreen = ({ navigation }) => {
         }
       >
         {budgets.length === 0 ? (
-          <>
-            {renderPresetBudgets()}
-            {availablePresets.length === 0 && renderEmptyState()}
-          </>
+          renderEmptyState()
         ) : (
           <>
-            {renderPresetBudgets()}
             <Box mb="$4">
               <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$3">Your Budgets</Text>
             </Box>
@@ -360,6 +325,10 @@ const BudgetsScreen = ({ navigation }) => {
         }}
         onSave={handleAddBudget}
         initialData={editingBudget}
+        categories={categories}
+        onCategoryAdded={(newCategory) => {
+          setCategories(prev => [...prev, newCategory]);
+        }}
       />
 
       {/* Delete Confirmation Modal */}

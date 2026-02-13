@@ -135,7 +135,7 @@ const AnalyticsService = {
       const categorySpending = this.getSpendingByCategory(filtered, startDate, endDate);
 
       return categorySpending.map(category => {
-        const budget = budgets.find(b => b.name === category.category);
+        const budget = budgets.find(b => b.categoryId === category.category);
         return {
           category: category.category,
           actual: category.amount,
