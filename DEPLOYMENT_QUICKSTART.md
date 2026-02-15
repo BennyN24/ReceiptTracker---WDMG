@@ -11,8 +11,8 @@ Mobile App → Vercel Backend → AI Services (Gemini/Google Cloud Vision)
 ## Files Created
 
 ### Backend API (`/api` directory)
-- `api/api/gemini-analyze.js` - Gemini AI proxy endpoint
-- `api/api/google-vision-ocr.js` - Google Cloud Vision proxy endpoint
+- `api/gemini-analyze.js` - Gemini AI proxy endpoint
+- `api/google-vision-ocr.js` - Google Cloud Vision proxy endpoint
 - `api/package.json` - Backend dependencies
 - `api/vercel.json` - Vercel deployment configuration
 - `api/.env.example` - Environment variable template

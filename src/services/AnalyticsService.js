@@ -103,7 +103,10 @@ const AnalyticsService = {
       const amounts = filtered.map(e => e.amount).sort((a, b) => a - b);
       const total = amounts.reduce((sum, a) => sum + a, 0);
       const average = total / amounts.length;
-      const median = amounts[Math.floor(amounts.length / 2)];
+      const n = amounts.length;
+      const median = n % 2 === 0
+        ? (amounts[n / 2 - 1] + amounts[n / 2]) / 2
+        : amounts[Math.floor(n / 2)];
       const min = amounts[0];
       const max = amounts[amounts.length - 1];
 
