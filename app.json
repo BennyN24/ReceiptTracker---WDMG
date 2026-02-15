@@ -15,7 +15,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.bennyns.receipttracker",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "ReceiptTracker uses your location to automatically set your local currency."
+        "NSLocationWhenInUseUsageDescription": "ReceiptTracker uses your location to automatically set your local currency.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -25,7 +26,12 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.bennyns.receipttracker",
-      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

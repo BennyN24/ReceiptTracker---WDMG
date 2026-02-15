@@ -247,15 +247,9 @@ const SettingsScreen = ({ navigation }) => {
   };
 
   const handleExportData = async () => {
-    const isAvailable = await ExportService.isSharingAvailable();
-    if (!isAvailable) {
-      Alert.alert('Unavailable', 'Sharing is not supported on this device.');
-      return;
-    }
-
     Alert.alert(
       'Export Data',
-      'Choose an export format:',
+      'Choose format. You can then save to Downloads, Google Drive, or share via any app.',
       [
         {
           text: 'JSON (Full Backup)',
@@ -273,25 +267,26 @@ const SettingsScreen = ({ navigation }) => {
   const performExport = async (format) => {
     setExporting(true);
     try {
-      if (format === 'json') {
-        await ExportService.exportAsJSON();
-        Toast.show({
-          type: 'success',
-          text1: 'Export Successful',
-          text2: 'JSON file has been saved',
-          position: 'top',
-          visibilityTime: 3000,
-        });
-      } else {
-        await ExportService.exportAsCSV();
-        Toast.show({
-          type: 'success',
-          text1: 'Export Successful',
-          text2: 'CSV file has been saved',
-          position: 'top',
-          visibilityTime: 3000,
-        });
+      const isAvailable = await ExportService.isSharingAvailable();
+      if (!isAvailable) {
+        Alert.alert('Unavailable', 'Sharing is not supported on this device.');
+        return;
       }
+
+      let result;
+      if (format === 'json') {
+        result = await ExportService.exportAsJSON();
+      } else {
+        result = await ExportService.exportAsCSV();
+      }
+      
+      Toast.show({
+        type: 'success',
+        text1: 'Export Ready',
+        text2: 'Choose where to save your file (Downloads, Drive, etc.)',
+        position: 'top',
+        visibilityTime: 3000,
+      });
     } catch (error) {
       Toast.show({
         type: 'error',

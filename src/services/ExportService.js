@@ -1,5 +1,6 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { Platform, Alert } from 'react-native';
 import { StorageService } from './StorageService';
 import RecurringExpenseService from './RecurringExpenseService';
 
@@ -24,12 +25,47 @@ const ExportService = {
       const filePath = `${FileSystem.cacheDirectory}${fileName}`;
 
       await FileSystem.writeAsStringAsync(filePath, JSON.stringify(exportData, null, 2), {
-        encoding: FileSystem.EncodingType.UTF8,
+        encoding: 'utf8',
       });
 
       await this._shareFile(filePath, 'application/json');
 
-      return { success: true, format: 'json' };
+      return { success: true, format: 'json', filePath };
+    } catch (error) {
+      console.error('JSON export error:', error);
+      throw new Error(`Failed to export JSON: ${error.message}`);
+    }
+  },
+
+  /**
+   * Export JSON with option to save using file picker or share.
+   * This gives users control over where to save the file.
+   */
+  async exportAsJSONToDownloads() {
+    try {
+      const [baseExport, recurringExpenses] = await Promise.all([
+        StorageService.exportData(),
+        RecurringExpenseService.getRecurringExpenses(),
+      ]);
+
+      const exportData = {
+        ...baseExport,
+        recurringExpenses,
+      };
+
+      const fileName = `ReceiptTracker_Backup_${this._formatDateForFilename()}.json`;
+      const content = JSON.stringify(exportData, null, 2);
+      
+      // Save to cache first
+      const filePath = `${FileSystem.cacheDirectory}${fileName}`;
+      await FileSystem.writeAsStringAsync(filePath, content, {
+        encoding: 'utf8',
+      });
+
+      // Use share sheet which allows saving to Downloads, Drive, etc.
+      await this._shareFile(filePath, 'application/json');
+
+      return { success: true, format: 'json', fileName };
     } catch (error) {
       console.error('JSON export error:', error);
       throw new Error(`Failed to export JSON: ${error.message}`);
@@ -70,12 +106,59 @@ const ExportService = {
       const filePath = `${FileSystem.cacheDirectory}${fileName}`;
 
       await FileSystem.writeAsStringAsync(filePath, csvContent, {
-        encoding: FileSystem.EncodingType.UTF8,
+        encoding: 'utf8',
       });
 
       await this._shareFile(filePath, 'text/csv');
 
-      return { success: true, format: 'csv' };
+      return { success: true, format: 'csv', filePath };
+    } catch (error) {
+      console.error('CSV export error:', error);
+      throw new Error(`Failed to export CSV: ${error.message}`);
+    }
+  },
+
+  /**
+   * Export CSV with option to save using file picker or share.
+   * This gives users control over where to save the file.
+   */
+  async exportAsCSVToDownloads() {
+    try {
+      const [expenses, categories] = await Promise.all([
+        StorageService.getExpenses(),
+        StorageService.getCategories(),
+      ]);
+
+      const categoryMap = {};
+      categories.forEach((cat) => {
+        categoryMap[cat.id] = cat.name;
+      });
+
+      const headers = ['Date', 'Vendor', 'Amount', 'Category', 'Description', 'Created At'];
+      const rows = expenses
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .map((expense) => [
+          expense.date,
+          this._escapeCSV(expense.vendor),
+          expense.amount.toFixed(2),
+          this._escapeCSV(categoryMap[expense.category] || expense.category),
+          this._escapeCSV(expense.description || expense.notes || ''),
+          expense.createdAt || '',
+        ]);
+
+      const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
+
+      const fileName = `ReceiptTracker_Expenses_${this._formatDateForFilename()}.csv`;
+      const filePath = `${FileSystem.cacheDirectory}${fileName}`;
+      
+      await FileSystem.writeAsStringAsync(filePath, csvContent, {
+        encoding: 'utf8',
+      });
+
+      // Use share sheet which allows saving to Downloads, Drive, etc.
+      await this._shareFile(filePath, 'text/csv');
+
+      return { success: true, format: 'csv', fileName };
     } catch (error) {
       console.error('CSV export error:', error);
       throw new Error(`Failed to export CSV: ${error.message}`);
@@ -103,6 +186,7 @@ const ExportService = {
       dialogTitle: 'Export Receipt Tracker Data',
     });
   },
+
 
   /**
    * Escape a value for safe CSV output.

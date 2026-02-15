@@ -1,0 +1,24 @@
+name: EAS Build on Seed Branch Push
+
+on:
+  push:
+    branches:
+      - seed
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Build with EAS
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas build --platform android --profile production --non-interactive

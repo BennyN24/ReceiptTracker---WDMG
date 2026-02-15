@@ -1,5 +1,5 @@
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { StorageService } from './StorageService';
 import RecurringExpenseService from './RecurringExpenseService';
 import generateSecureId from '../utils/generateSecureId';
@@ -50,7 +50,7 @@ const ImportService = {
   async _importJSON(fileUri) {
     try {
       const fileContent = await FileSystem.readAsStringAsync(fileUri, {
-        encoding: FileSystem.EncodingType.UTF8,
+        encoding: 'utf8',
       });
 
       const data = JSON.parse(fileContent);
@@ -103,7 +103,7 @@ const ImportService = {
   async _importCSV(fileUri) {
     try {
       const fileContent = await FileSystem.readAsStringAsync(fileUri, {
-        encoding: FileSystem.EncodingType.UTF8,
+        encoding: 'utf8',
       });
 
       const lines = fileContent.split('\n').filter(line => line.trim());
