@@ -33,6 +33,11 @@ const NotificationService = {
    */
   async sendBudgetAlert(budgetName, percentageUsed, remainingAmount, currencyCode = 'USD') {
     try {
+      // Only send alerts when usage is 75% or above
+      if (percentageUsed < 75) {
+        return;
+      }
+
       const symbol = CurrencyService.getSymbol(currencyCode);
       const title = `Budget Alert: ${budgetName}`;
       let body = '';
@@ -103,9 +108,9 @@ const NotificationService = {
   async scheduleDailySummary(hour = 20, minute = 0) {
     try {
       const trigger = {
-        type: 'daily',
         hour,
         minute,
+        repeats: true,
       };
 
       await Notifications.scheduleNotificationAsync({
@@ -127,10 +132,10 @@ const NotificationService = {
   async scheduleWeeklyReview(dayOfWeek = 1, hour = 10, minute = 0) {
     try {
       const trigger = {
-        type: 'weekly',
         weekday: dayOfWeek, // 1 = Sunday, 2 = Monday, etc.
         hour,
         minute,
+        repeats: true,
       };
 
       await Notifications.scheduleNotificationAsync({

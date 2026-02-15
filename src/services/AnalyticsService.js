@@ -103,7 +103,10 @@ const AnalyticsService = {
       const amounts = filtered.map(e => e.amount).sort((a, b) => a - b);
       const total = amounts.reduce((sum, a) => sum + a, 0);
       const average = total / amounts.length;
-      const median = amounts[Math.floor(amounts.length / 2)];
+      const n = amounts.length;
+      const median = n % 2 === 0
+        ? (amounts[n / 2 - 1] + amounts[n / 2]) / 2
+        : amounts[Math.floor(n / 2)];
       const min = amounts[0];
       const max = amounts[amounts.length - 1];
 
@@ -219,20 +222,22 @@ const AnalyticsService = {
 
       // Budget exceeded
       const exceeded = byCategory.filter(cat => {
-        const budget = budgets.find(b => b.name === cat.category);
+        const budget = budgets.find(b => b.categoryId === cat.category);
         return budget && cat.amount > budget.amount;
       });
 
       if (exceeded.length > 0) {
         exceeded.forEach(cat => {
-          const budget = budgets.find(b => b.name === cat.category);
-          const overage = cat.amount - budget.amount;
-          insights.push({
-            type: 'budget_exceeded',
-            title: `Budget exceeded: ${cat.category}`,
-            message: `You exceeded your ${cat.category} budget by $${overage.toFixed(2)}`,
-            severity: 'warning',
-          });
+          const budget = budgets.find(b => b.categoryId === cat.category);
+          if (budget) {
+            const overage = cat.amount - budget.amount;
+            insights.push({
+              type: 'budget_exceeded',
+              title: `Budget exceeded: ${budget.name}`,
+              message: `You exceeded your ${budget.name} budget by $${overage.toFixed(2)}`,
+              severity: 'warning',
+            });
+          }
         });
       }
 
