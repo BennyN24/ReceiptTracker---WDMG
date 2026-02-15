@@ -299,7 +299,7 @@ const ExpensesScreen = ({ navigation }) => {
   }
 
   return (
-    <Box flex={1} bg={colors.backgroundSecondary} pt="$16">
+    <Box flex={1} bg={colors.backgroundSecondary} pt="$8">
       {/* Header with Search and Recurring Button */}
       <Box bg={colors.white} borderBottomWidth={1} borderBottomColor={colors.border}>
         <HStack p="$4" alignItems="center" justifyContent="space-between" mb="$2">

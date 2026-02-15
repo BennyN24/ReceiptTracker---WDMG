@@ -225,6 +225,7 @@ const SettingsScreen = ({ navigation }) => {
   return (
     <ScrollView
       bg={colors.backgroundSecondary}
+      pt="$8"
       showsVerticalScrollIndicator={false}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />

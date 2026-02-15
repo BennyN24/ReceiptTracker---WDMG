@@ -286,7 +286,7 @@ const DashboardScreen = ({ navigation }) => {
         <HStack justifyContent="space-between" alignItems="center" mb="$3">
           <Text fontWeight="$semibold" fontSize="$lg" color={colors.text}>Monthly Budget</Text>
           <Text fontWeight="$semibold" fontSize="$md" color={colors.primary}>
-            {formatCurrency(totalSpent)} / {formatCurrency(settings.monthlyBudget || 1550)}
+            {formatCurrency(totalSpent)} / {formatCurrency(settings.monthlyBudget || 5000)}
           </Text>
         </HStack>
         <ProgressBar
@@ -314,7 +314,7 @@ const DashboardScreen = ({ navigation }) => {
             <Icon name="account-balance-wallet" size={24} color={colors.primary} />
           </Box>
           <Text fontWeight="$bold" fontSize="$xl" color={colors.text}>
-            {formatCurrency((settings.monthlyBudget || 1550) - totalSpent)}
+            {formatCurrency((settings.monthlyBudget || 5000) - totalSpent)}
           </Text>
           <Text fontSize="$xs" color={colors.textSecondary}>Remaining</Text>
         </Box>

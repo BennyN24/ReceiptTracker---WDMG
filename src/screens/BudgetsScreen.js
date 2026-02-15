@@ -265,7 +265,7 @@ const BudgetsScreen = ({ navigation }) => {
   }
 
   return (
-    <Box flex={1} bg={colors.backgroundSecondary}>
+    <Box flex={1} bg={colors.backgroundSecondary} pt="$8">
       {/* Header */}
       <Box px="$5" pt="$10" pb="$4" bg={colors.white} borderBottomWidth={1} borderBottomColor={colors.border}>
         <Heading size="2xl" color={colors.text} mb="$1">Budgets</Heading>

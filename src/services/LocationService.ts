@@ -52,6 +52,13 @@ const LocationService = {
         return null;
       }
 
+      // Try last known position first (faster, no GPS spin-up)
+      const lastKnown = await Location.getLastKnownPositionAsync();
+      if (lastKnown) {
+        return lastKnown;
+      }
+
+      // Fall back to active position request
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Low,
       });
@@ -64,12 +71,15 @@ const LocationService = {
 
   /**
    * Reverse geocode coordinates to get the country code.
-   * Uses expo-location's built-in reverse geocoding.
+   * Uses expo-location's built-in reverse geocoding with a fallback
+   * to the Nominatim HTTP API if the native geocoder fails
+   * (e.g. Android NullPointerException when country code is null).
    */
   async getCountryFromCoordinates(
     latitude: number,
     longitude: number
   ): Promise<string | null> {
+    // Attempt 1: native reverse geocoder
     try {
       const results = await Location.reverseGeocodeAsync({
         latitude,
@@ -78,13 +88,36 @@ const LocationService = {
 
       if (results && results.length > 0) {
         const { isoCountryCode } = results[0];
-        return isoCountryCode || null;
+        if (isoCountryCode) return isoCountryCode;
       }
-      return null;
     } catch (error) {
-      console.error('Reverse geocoding failed:', error);
-      return null;
+      console.warn('Native reverse geocoding failed, trying fallback:', error);
     }
+
+    // Attempt 2: Nominatim HTTP fallback (no API key required)
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=3`,
+        {
+          headers: {
+            'User-Agent': 'ReceiptTracker/1.0',
+            Accept: 'application/json',
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const countryCode = data?.address?.country_code;
+        if (countryCode && typeof countryCode === 'string') {
+          return countryCode.toUpperCase();
+        }
+      }
+    } catch (fallbackError) {
+      console.error('Fallback reverse geocoding also failed:', fallbackError);
+    }
+
+    return null;
   },
 
   /**
