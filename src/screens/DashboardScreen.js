@@ -52,7 +52,7 @@ const DashboardScreen = ({ navigation }) => {
     }, [])
   );
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [expensesData, budgetsData, categoriesData, settingsData] = await Promise.all([
         StorageService.getExpenses(),
@@ -76,13 +76,13 @@ const DashboardScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadData();
     setRefreshing(false);
-  };
+  }, [loadData]);
 
   const getCurrentMonthExpenses = useMemo(() => {
     const now = new Date();
@@ -246,20 +246,20 @@ const DashboardScreen = ({ navigation }) => {
     }
   };
 
-  const formatCurrency = (amount) => {
+  const formatCurrency = useCallback((amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: settings.currency || 'USD',
     }).format(amount);
-  };
+  }, [settings.currency]);
 
-  const formatDate = (dateString) => {
+  const formatDate = useCallback((dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
     });
-  };
+  }, []);
 
   if (loading) {
     return (

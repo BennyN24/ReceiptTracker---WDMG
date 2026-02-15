@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   FlatList,
   Alert,
@@ -38,7 +38,7 @@ const CurrencySettingsScreen = () => {
     loadCurrencySettings();
   }, []);
 
-  const loadCurrencySettings = async () => {
+  const loadCurrencySettings = useCallback(async () => {
     try {
       setLoading(true);
       const saved = await AsyncStorage.getItem(CURRENCY_KEY);
@@ -58,15 +58,15 @@ const CurrencySettingsScreen = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadCurrencySettings();
     setRefreshing(false);
-  };
+  }, [loadCurrencySettings]);
 
-  const handleCurrencyChange = async (currencyCode) => {
+  const handleCurrencyChange = useCallback(async (currencyCode) => {
     try {
       await AsyncStorage.setItem(CURRENCY_KEY, currencyCode);
       setSelectedCurrency(currencyCode);
@@ -80,9 +80,9 @@ const CurrencySettingsScreen = () => {
       console.error('Change currency error:', error);
       Alert.alert('Error', 'Failed to change currency');
     }
-  };
+  }, []);
 
-  const handleAutoDetectToggle = async (value) => {
+  const handleAutoDetectToggle = useCallback(async (value) => {
     try {
       setAutoDetect(value);
       const settings = await StorageService.getSettings();
@@ -96,9 +96,9 @@ const CurrencySettingsScreen = () => {
       console.error('Toggle auto-detect error:', error);
       Alert.alert('Error', 'Failed to update setting');
     }
-  };
+  }, []);
 
-  const handleDetectNow = async () => {
+  const handleDetectNow = useCallback(async () => {
     try {
       setDetecting(true);
 
@@ -136,9 +136,9 @@ const CurrencySettingsScreen = () => {
     } finally {
       setDetecting(false);
     }
-  };
+  }, []);
 
-  const renderCurrencyItem = ({ item }) => (
+  const renderCurrencyItem = useCallback(({ item }) => (
     <Pressable
       onPress={() => handleCurrencyChange(item.code)}
       mb="$2"
@@ -166,7 +166,7 @@ const CurrencySettingsScreen = () => {
         </Box>
       </HStack>
     </Pressable>
-  );
+  ), [selectedCurrency, colors, handleCurrencyChange]);
 
   if (loading) {
     return (

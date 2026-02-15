@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   StyleSheet,
   Alert,
@@ -36,26 +36,20 @@ const CaptureScreen = ({ navigation }) => {
   const [processingStage, setProcessingStage] = useState('');
   const cameraRef = useRef();
 
-  React.useEffect(() => {
+  useEffect(() => {
     loadCategories();
-    
-    return () => {
-      if (cameraRef.current) {
-        cameraRef.current = null;
-      }
-    };
-  }, []);
+  }, [loadCategories]);
 
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     try {
       const categoriesData = await StorageService.getAllCategories();
       setCategories(categoriesData);
     } catch (error) {
       console.error('Error loading categories:', error);
     }
-  };
+  }, []);
 
-  const takePicture = async () => {
+  const takePicture = useCallback(async () => {
     if (!cameraRef.current) {
       console.error('Camera ref not available');
       Alert.alert('Error', 'Camera not ready. Please try again.');
@@ -93,9 +87,9 @@ const CaptureScreen = ({ navigation }) => {
       console.error('Error taking picture:', error);
       Alert.alert('Error', `Failed to take picture: ${error.message || 'Unknown error'}`);
     }
-  };
+  }, []);
 
-  const pickImage = async () => {
+  const pickImage = useCallback(async () => {
     try {
       console.log('Launching image picker...');
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -140,15 +134,52 @@ const CaptureScreen = ({ navigation }) => {
       console.error('Error picking image:', error);
       Alert.alert('Error', `Failed to pick image: ${error.message || 'Unknown error'}`);
     }
-  };
+  }, []);
 
-  const retakePicture = () => {
+  const retakePicture = useCallback(() => {
     setCapturedImage(null);
     setSavedImageUri(null);
     setProcessingStage('');
-  };
+  }, []);
 
-  const processImage = async () => {
+  const fallbackToOCR = useCallback(async (imageUri) => {
+    setIsProcessing(true);
+    setProcessingStage('Falling back to OCR...');
+    try {
+      const result = await OCRService.extractReceiptData(imageUri);
+      if (result) {
+        setOcrData(result);
+        const quality = OCRService.getExtractionQuality(result);
+        if (quality.status === 'warning') {
+          Alert.alert(
+            'Partial Extraction (OCR)',
+            'Some fields could not be extracted. Please review and fill in missing details.',
+            [{ text: 'OK', onPress: () => setShowAddModal(true) }]
+          );
+        } else {
+          setShowAddModal(true);
+        }
+      } else {
+        Alert.alert(
+          'Could Not Read Receipt',
+          'Unable to extract data from this image. You can still add the expense manually.',
+          [{ text: 'Add Manually', onPress: () => setShowAddModal(true) }]
+        );
+      }
+    } catch (error) {
+      console.error('OCR fallback error:', error);
+      Alert.alert(
+        'Processing Error',
+        'An error occurred while processing the receipt. You can still add the expense manually.',
+        [{ text: 'Add Manually', onPress: () => setShowAddModal(true) }]
+      );
+    } finally {
+      setIsProcessing(false);
+      setProcessingStage('');
+    }
+  }, []);
+
+  const processImage = useCallback(async () => {
     setIsProcessing(true);
     setOcrData(null);
     setProcessingStage('Analyzing receipt with AI...');
@@ -214,46 +245,10 @@ const CaptureScreen = ({ navigation }) => {
       setIsProcessing(false);
       setProcessingStage('');
     }
-  };
+  }, [capturedImage, savedImageUri, fallbackToOCR]);
 
-  const fallbackToOCR = async (imageUri) => {
-    setIsProcessing(true);
-    setProcessingStage('Falling back to OCR...');
-    try {
-      const result = await OCRService.extractReceiptData(imageUri);
-      if (result) {
-        setOcrData(result);
-        const quality = OCRService.getExtractionQuality(result);
-        if (quality.status === 'warning') {
-          Alert.alert(
-            'Partial Extraction (OCR)',
-            'Some fields could not be extracted. Please review and fill in missing details.',
-            [{ text: 'OK', onPress: () => setShowAddModal(true) }]
-          );
-        } else {
-          setShowAddModal(true);
-        }
-      } else {
-        Alert.alert(
-          'Could Not Read Receipt',
-          'Unable to extract data from this image. You can still add the expense manually.',
-          [{ text: 'Add Manually', onPress: () => setShowAddModal(true) }]
-        );
-      }
-    } catch (error) {
-      console.error('OCR fallback error:', error);
-      Alert.alert(
-        'Processing Error',
-        'An error occurred while processing the receipt. You can still add the expense manually.',
-        [{ text: 'Add Manually', onPress: () => setShowAddModal(true) }]
-      );
-    } finally {
-      setIsProcessing(false);
-      setProcessingStage('');
-    }
-  };
 
-  const handleSaveExpense = async (expenseData) => {
+  const handleSaveExpense = useCallback(async (expenseData) => {
     try {
       const receiptImagePath = savedImageUri || capturedImage.uri;
       const expenseWithImage = {
@@ -277,11 +272,11 @@ const CaptureScreen = ({ navigation }) => {
     } catch (error) {
       Alert.alert('Error', 'Failed to save expense');
     }
-  };
+  }, [capturedImage, savedImageUri, ocrData, navigation]);
 
-  const toggleCameraType = () => {
-    setFacing(facing === 'back' ? 'front' : 'back');
-  };
+  const toggleCameraType = useCallback(() => {
+    setFacing(current => current === 'back' ? 'front' : 'back');
+  }, []);
 
   if (!permission) {
     return (

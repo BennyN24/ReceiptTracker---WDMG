@@ -42,13 +42,7 @@ const BudgetsScreen = ({ navigation }) => {
     loadData();
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [])
-  );
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [budgetsData, expensesData, categoriesData, settingsData] = await Promise.all([
         StorageService.getBudgets(),
@@ -66,52 +60,62 @@ const BudgetsScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const onRefresh = async () => {
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadData();
     setRefreshing(false);
-  };
+  }, [loadData]);
 
-  const getCurrentPeriodExpenses = useMemo(() => {
-    return (period, budgetDate) => {
-      const now = new Date();
+  const getCurrentPeriodExpenses = useCallback((period, budgetDate) => {
+    const now = new Date();
+    
+    return expenses.filter(expense => {
+      const expenseDate = new Date(expense.date);
       
-      return expenses.filter(expense => {
-        const expenseDate = new Date(expense.date);
-        
-        if (period === 'monthly') {
-          return expenseDate.getMonth() === now.getMonth() && 
-                 expenseDate.getFullYear() === now.getFullYear();
-        } else if (period === 'weekly') {
-          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          return expenseDate >= weekAgo;
-        } else if (period === 'yearly') {
-          return expenseDate.getFullYear() === now.getFullYear();
-        }
-        
-        return false;
-      });
-    };
+      if (period === 'monthly') {
+        return expenseDate.getMonth() === now.getMonth() && 
+               expenseDate.getFullYear() === now.getFullYear();
+      } else if (period === 'weekly') {
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return expenseDate >= weekAgo;
+      } else if (period === 'yearly') {
+        return expenseDate.getFullYear() === now.getFullYear();
+      }
+      
+      return false;
+    });
   }, [expenses]);
 
-  const getBudgetSpent = useMemo(() => {
-    return (budget) => {
-      const periodExpenses = getCurrentPeriodExpenses(budget.period, budget.createdAt);
-      const categoryExpenses = budget.categoryId
-        ? periodExpenses.filter(expense => expense.category === budget.categoryId)
-        : periodExpenses;
-      return categoryExpenses.reduce((total, expense) => total + expense.amount, 0);
-    };
+  const getBudgetSpent = useCallback((budget) => {
+    const periodExpenses = getCurrentPeriodExpenses(budget.period, budget.createdAt);
+    const categoryExpenses = budget.categoryId
+      ? periodExpenses.filter(expense => expense.category === budget.categoryId)
+      : periodExpenses;
+    return categoryExpenses.reduce((total, expense) => total + expense.amount, 0);
   }, [getCurrentPeriodExpenses]);
 
-  const getBudgetPercentage = useMemo(() => {
-    return (budget) => {
-      const spent = getBudgetSpent(budget);
-      return Math.min((spent / budget.amount) * 100, 100);
-    };
+  const getBudgetPercentage = useCallback((budget) => {
+    const spent = getBudgetSpent(budget);
+    return Math.min((spent / budget.amount) * 100, 100);
   }, [getBudgetSpent]);
+
+  const handleEditBudget = useCallback((budget) => {
+    setEditingBudget(budget);
+    setShowAddModal(true);
+  }, []);
+
+  const handleDeleteBudget = useCallback((budgetId) => {
+    setDeletingBudgetId(budgetId);
+    setShowDeleteModal(true);
+  }, []);
 
   const handleAddBudget = async (budgetData) => {
     try {
@@ -129,15 +133,6 @@ const BudgetsScreen = ({ navigation }) => {
     }
   };
 
-  const handleEditBudget = (budget) => {
-    setEditingBudget(budget);
-    setShowAddModal(true);
-  };
-
-  const handleDeleteBudget = (budgetId) => {
-    setDeletingBudgetId(budgetId);
-    setShowDeleteModal(true);
-  };
 
   const handleConfirmDelete = async () => {
     try {
@@ -155,33 +150,32 @@ const BudgetsScreen = ({ navigation }) => {
     setDeletingBudgetId(null);
   };
 
-  const formatCurrency = (amount, currency = null) => {
+  const formatCurrency = useCallback((amount, currency = null) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency || settings.currency || 'USD',
     }).format(amount);
-  };
+  }, [settings.currency]);
 
-  const getProgressColor = (percentage) => {
+  const getProgressColor = useCallback((percentage) => {
     if (percentage >= 90) return '#ef4444';
     if (percentage >= 70) return '#f59e0b';
     return '#10b981';
-  };
+  }, []);
 
-  const getCategoryForBudget = (budget) => {
+  const getCategoryForBudget = useCallback((budget) => {
     return categories.find(c => c.id === budget.categoryId);
-  };
+  }, [categories]);
 
-  const renderBudgetItem = useMemo(() => {
-    return (budget) => {
-      const spent = getBudgetSpent(budget);
-      const percentage = getBudgetPercentage(budget);
-      const remaining = budget.amount - spent;
-      const progressColor = getProgressColor(percentage);
-      const category = getCategoryForBudget(budget);
+  const renderBudgetItem = useCallback((budget) => {
+    const spent = getBudgetSpent(budget);
+    const percentage = getBudgetPercentage(budget);
+    const remaining = budget.amount - spent;
+    const progressColor = getProgressColor(percentage);
+    const category = getCategoryForBudget(budget);
 
-      return (
-        <Pressable key={budget.id} onPress={() => handleEditBudget(budget)}>
+    return (
+      <Pressable key={budget.id} onPress={() => handleEditBudget(budget)}>
           <Box mb="$4" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
             <HStack justifyContent="space-between" alignItems="flex-start" mb="$3">
               <HStack flex={1} alignItems="center" space="sm">
@@ -230,8 +224,7 @@ const BudgetsScreen = ({ navigation }) => {
           </Box>
         </Pressable>
       );
-    };
-  }, [getBudgetSpent, getBudgetPercentage, getProgressColor, formatCurrency, handleEditBudget, handleDeleteBudget, categories]);
+  }, [getBudgetSpent, getBudgetPercentage, getProgressColor, formatCurrency, categories, handleEditBudget, handleDeleteBudget]);
 
   const renderEmptyState = () => (
     <VStack alignItems="center" justifyContent="center" py="$16" px="$8">

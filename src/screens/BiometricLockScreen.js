@@ -1,4 +1,4 @@
-import React, { useEffect, useContext } from 'react';
+import React, { useEffect, useContext, useCallback, useMemo } from 'react';
 import { View, StyleSheet, Animated, Image } from 'react-native';
 import {
   Box,
@@ -15,7 +15,7 @@ const logoImage = require('../../assets/logo.png');
 
 const BiometricLockScreen = ({ onAuthenticated }) => {
   const { isDarkMode } = useContext(ThemeContext);
-  const colors = getColors(isDarkMode);
+  const colors = useMemo(() => getColors(isDarkMode), [isDarkMode]);
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const scaleAnim = React.useRef(new Animated.Value(0.9)).current;
 
@@ -37,7 +37,7 @@ const BiometricLockScreen = ({ onAuthenticated }) => {
     handleAuthenticate();
   }, []);
 
-  const handleAuthenticate = async () => {
+  const handleAuthenticate = useCallback(async () => {
     try {
       const success = await BiometricService.authenticate();
       if (success) {
@@ -46,7 +46,7 @@ const BiometricLockScreen = ({ onAuthenticated }) => {
     } catch (error) {
       console.error('Biometric lock screen auth error:', error);
     }
-  };
+  }, [onAuthenticated]);
 
   return (
     <Box flex={1} bg={colors.background} justifyContent="center" alignItems="center">

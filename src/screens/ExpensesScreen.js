@@ -52,10 +52,34 @@ const ExpensesScreen = ({ navigation }) => {
     loadData();
   }, []);
 
+  const loadData = useCallback(async () => {
+    try {
+      const [expensesData, categoriesData, settingsData] = await Promise.all([
+        StorageService.getExpenses(),
+        StorageService.getAllCategories(),
+        StorageService.getSettings(),
+      ]);
+      
+      setExpenses(expensesData);
+      setCategories(categoriesData);
+      setSettings(settingsData);
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to load expenses',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [])
+    }, [loadData])
   );
 
   const filterAndSortExpenses = useMemo(() => {
@@ -96,35 +120,21 @@ const ExpensesScreen = ({ navigation }) => {
     setFilteredExpenses(filterAndSortExpenses);
   }, [filterAndSortExpenses]);
 
-  const loadData = async () => {
-    try {
-      const [expensesData, categoriesData, settingsData] = await Promise.all([
-        StorageService.getExpenses(),
-        StorageService.getAllCategories(),
-        StorageService.getSettings(),
-      ]);
-      
-      setExpenses(expensesData);
-      setCategories(categoriesData);
-      setSettings(settingsData);
-    } catch (error) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to load expenses',
-        position: 'top',
-        visibilityTime: 3000,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadData();
     setRefreshing(false);
-  };
+  }, [loadData]);
+
+  const handleEditExpense = useCallback((expense) => {
+    setEditingExpense(expense);
+    setShowAddModal(true);
+  }, []);
+
+  const handleDeleteExpense = useCallback((expenseId) => {
+    setDeletingExpenseId(expenseId);
+    setShowDeleteModal(true);
+  }, []);
 
   const handleAddExpense = async (expenseData) => {
     try {
@@ -192,15 +202,6 @@ const ExpensesScreen = ({ navigation }) => {
     }
   };
 
-  const handleEditExpense = (expense) => {
-    setEditingExpense(expense);
-    setShowAddModal(true);
-  };
-
-  const handleDeleteExpense = (expenseId) => {
-    setDeletingExpenseId(expenseId);
-    setShowDeleteModal(true);
-  };
 
   const handleConfirmDelete = async () => {
     try {
@@ -224,39 +225,39 @@ const ExpensesScreen = ({ navigation }) => {
     setDeletingExpenseId(null);
   };
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearchQuery('');
     setSelectedCategory(null);
     setSortBy('newest');
-  };
+  }, []);
 
-  const formatCurrency = (amount) => {
+  const formatCurrency = useCallback((amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: settings.currency || 'USD',
     }).format(amount);
-  };
+  }, [settings.currency]);
 
-  const formatDate = (dateString) => {
+  const formatDate = useCallback((dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
     });
-  };
+  }, []);
 
-  const getCategoryName = (categoryId) => {
+  const getCategoryName = useCallback((categoryId) => {
     const category = categories.find(cat => cat.id === categoryId);
     return category ? category.name : 'Other';
-  };
+  }, [categories]);
 
-  const getCategoryColor = (categoryId) => {
+  const getCategoryColor = useCallback((categoryId) => {
     const category = categories.find(cat => cat.id === categoryId);
     return category ? category.color : '#6b7280';
-  };
+  }, [categories]);
 
-  const renderExpenseItem = ({ item }) => (
+  const renderExpenseItem = useCallback(({ item }) => (
     <Pressable onPress={() => handleEditExpense(item)}>
       <Box mb="$3" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
         <HStack justifyContent="space-between" alignItems="flex-start">
@@ -287,7 +288,7 @@ const ExpensesScreen = ({ navigation }) => {
         </Box>
       </Box>
     </Pressable>
-  );
+  ), [formatCurrency, formatDate, getCategoryName, getCategoryColor, handleEditExpense, handleDeleteExpense]);
 
   const renderEmptyState = () => (
     <VStack alignItems="center" justifyContent="center" py="$16" px="$8">

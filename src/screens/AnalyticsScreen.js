@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Dimensions,
   RefreshControl,
@@ -33,11 +33,44 @@ const AnalyticsScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    loadAnalytics();
-  }, [period]);
+  const getDateRange = useCallback((periodType) => {
+    const now = new Date();
+    let startDate, endDate;
 
-  const loadAnalytics = async () => {
+    endDate = now.toISOString().split('T')[0];
+
+    switch (periodType) {
+      case 'week':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split('T')[0];
+        break;
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+          .toISOString()
+          .split('T')[0];
+        break;
+      case 'quarter':
+        const quarterStart = Math.floor(now.getMonth() / 3) * 3;
+        startDate = new Date(now.getFullYear(), quarterStart, 1)
+          .toISOString()
+          .split('T')[0];
+        break;
+      case 'year':
+        startDate = new Date(now.getFullYear(), 0, 1)
+          .toISOString()
+          .split('T')[0];
+        break;
+      default:
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split('T')[0];
+    }
+
+    return { startDate, endDate };
+  }, []);
+
+  const loadAnalytics = useCallback(async () => {
     try {
       setLoading(true);
       const expensesData = await StorageService.getExpenses();
@@ -84,66 +117,33 @@ const AnalyticsScreen = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [period, getDateRange]);
 
-  const onRefresh = async () => {
+  useEffect(() => {
+    loadAnalytics();
+  }, [loadAnalytics]);
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadAnalytics();
     setRefreshing(false);
-  };
+  }, [loadAnalytics]);
 
-  const getDateRange = (periodType) => {
-    const now = new Date();
-    let startDate, endDate;
-
-    endDate = now.toISOString().split('T')[0];
-
-    switch (periodType) {
-      case 'week':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .split('T')[0];
-        break;
-      case 'month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-          .toISOString()
-          .split('T')[0];
-        break;
-      case 'quarter':
-        const quarterStart = Math.floor(now.getMonth() / 3) * 3;
-        startDate = new Date(now.getFullYear(), quarterStart, 1)
-          .toISOString()
-          .split('T')[0];
-        break;
-      case 'year':
-        startDate = new Date(now.getFullYear(), 0, 1)
-          .toISOString()
-          .split('T')[0];
-        break;
-      default:
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .split('T')[0];
-    }
-
-    return { startDate, endDate };
-  };
-
-  const formatCurrency = (amount) => {
+  const formatCurrency = useCallback((amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: settings.currency || 'USD',
     }).format(amount);
-  };
+  }, [settings.currency]);
 
-  const renderStatCard = (label, value, color = colors.primary) => (
+  const renderStatCard = useCallback((label, value, color) => (
     <Box mb="$3" bg={colors.white} borderRadius="$xl" p="$4" borderLeftWidth={4} borderLeftColor={color} shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
       <Text fontSize="$sm" color={colors.textSecondary} mb="$1">{label}</Text>
       <Text fontSize="$xl" fontWeight="$bold" color={color}>
         {formatCurrency(typeof value === 'number' ? value : 0)}
       </Text>
     </Box>
-  );
+  ), [formatCurrency]);
 
   if (loading) {
     return (
@@ -287,10 +287,11 @@ const AnalyticsScreen = () => {
       <Box px="$4" py="$3">
         <Pressable
           onPress={() => {
+            const { startDate, endDate } = getDateRange(period);
             const csv = AnalyticsService.exportAnalyticsAsCSV(
               expenses,
-              getDateRange(period).startDate,
-              getDateRange(period).endDate
+              startDate,
+              endDate
             );
             if (csv) {
               console.log('CSV exported:', csv);

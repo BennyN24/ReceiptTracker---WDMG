@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Alert,
   Modal,
@@ -36,7 +36,7 @@ const SecuritySettingsScreen = () => {
     loadSecuritySettings();
   }, []);
 
-  const loadSecuritySettings = async () => {
+  const loadSecuritySettings = useCallback(async () => {
     try {
       setLoading(true);
       const available = await BiometricService.isBiometricAvailable();
@@ -51,15 +51,15 @@ const SecuritySettingsScreen = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadSecuritySettings();
     setRefreshing(false);
-  };
+  }, [loadSecuritySettings]);
 
-  const handleBiometricToggle = async (value) => {
+  const handleBiometricToggle = useCallback(async (value) => {
     try {
       if (value) {
         const available = await BiometricService.isBiometricAvailable();
@@ -87,9 +87,9 @@ const SecuritySettingsScreen = () => {
       console.error('Toggle biometric error:', error);
       Alert.alert('Error', 'Failed to update biometric settings');
     }
-  };
+  }, []);
 
-  const handleSetPasscode = async () => {
+  const handleSetPasscode = useCallback(async () => {
     try {
       if (!passcode || passcode.length < 4) {
         Alert.alert('Validation Error', 'Passcode must be at least 4 characters');
@@ -113,9 +113,9 @@ const SecuritySettingsScreen = () => {
       console.error('Set passcode error:', error);
       Alert.alert('Error', 'Failed to set passcode');
     }
-  };
+  }, [passcode, confirmPasscode]);
 
-  const handleChangePasscode = async () => {
+  const handleChangePasscode = useCallback(async () => {
     try {
       // First verify current passcode
       const verified = await BiometricService.verifyPasscode(passcode);
@@ -140,7 +140,7 @@ const SecuritySettingsScreen = () => {
       console.error('Change passcode error:', error);
       Alert.alert('Error', 'Failed to change passcode');
     }
-  };
+  }, [passcode, confirmPasscode]);
 
   const handleRemovePasscode = () => {
     Alert.alert(

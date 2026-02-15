@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import {
   Alert,
   Switch,
@@ -48,7 +48,7 @@ const SettingsScreen = ({ navigation }) => {
     loadSettings();
   }, []);
 
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     try {
       const settingsData = await StorageService.getSettings();
       setSettings(settingsData);
@@ -64,15 +64,15 @@ const SettingsScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadSettings();
     setRefreshing(false);
-  };
+  }, [loadSettings]);
 
-  const updateSetting = async (key, value) => {
+  const updateSetting = useCallback(async (key, value) => {
     try {
       const updatedSettings = { ...settings, [key]: value };
       await StorageService.saveSettings(updatedSettings);
@@ -80,7 +80,7 @@ const SettingsScreen = ({ navigation }) => {
     } catch (error) {
       Alert.alert('Error', 'Failed to update setting');
     }
-  };
+  }, [settings]);
 
   const handleSaveBudget = async () => {
     const budgetAmount = parseFloat(tempBudget);
@@ -342,12 +342,12 @@ const SettingsScreen = ({ navigation }) => {
     );
   };
 
-  const formatCurrency = (amount, currency = null) => {
+  const formatCurrency = useCallback((amount, currency = null) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency || settings.currency || 'USD',
     }).format(amount);
-  };
+  }, [settings.currency]);
 
   if (loading) {
     return (

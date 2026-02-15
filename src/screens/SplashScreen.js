@@ -1,9 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, StyleSheet, Animated, Dimensions, Text, Image } from 'react-native';
 
 const logoImage = require('../../assets/logo.png');
 
-const { width, height } = Dimensions.get('window');
 
 const SplashScreen = () => {
   const fadeAnim = React.useRef(new Animated.Value(0)).current;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   FlatList,
   Alert,
@@ -67,7 +67,7 @@ const RecurringExpensesScreen = () => {
     loadRecurringExpenses();
   }, []);
 
-  const loadRecurringExpenses = async () => {
+  const loadRecurringExpenses = useCallback(async () => {
     try {
       setLoading(true);
       const expenses = await RecurringExpenseService.getRecurringExpenses();
@@ -78,13 +78,13 @@ const RecurringExpensesScreen = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadRecurringExpenses();
     setRefreshing(false);
-  };
+  }, [loadRecurringExpenses]);
 
   const handleAddExpense = async () => {
     try {
@@ -162,7 +162,7 @@ const RecurringExpensesScreen = () => {
     setShowModal(true);
   };
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setFormData({
       vendor: '',
       amount: '',
@@ -174,7 +174,7 @@ const RecurringExpensesScreen = () => {
       receiptImage: null,
     });
     setEditingId(null);
-  };
+  }, []);
 
   const handleDateChange = (event, selectedDate) => {
     if (selectedDate) {
@@ -188,7 +188,7 @@ const RecurringExpensesScreen = () => {
     setShowDatePicker(false);
   };
 
-  const renderExpenseItem = ({ item }) => (
+  const renderExpenseItem = useCallback(({ item }) => (
     <Box mb="$3" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
       <HStack justifyContent="space-between" alignItems="flex-start" mb="$3">
         <VStack flex={1}>
@@ -243,7 +243,7 @@ const RecurringExpensesScreen = () => {
         </Pressable>
       </HStack>
     </Box>
-  );
+  ), [colors, handleEditExpense, handleDeleteExpense]);
 
   return (
     <Box flex={1} bg={colors.backgroundSecondary}>
