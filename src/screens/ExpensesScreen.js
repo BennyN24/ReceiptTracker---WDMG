@@ -23,6 +23,7 @@ import {
 } from '@gluestack-ui/themed';
 import { useFocusEffect } from '@react-navigation/native';
 import Icon from '@expo/vector-icons/MaterialIcons';
+import Toast from 'react-native-toast-message';
 import AddExpenseModal from '../components/AddExpenseModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import { StorageService } from '../services/StorageService';
@@ -107,7 +108,13 @@ const ExpensesScreen = ({ navigation }) => {
       setCategories(categoriesData);
       setSettings(settingsData);
     } catch (error) {
-      Alert.alert('Error', 'Failed to load expenses');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to load expenses',
+        position: 'top',
+        visibilityTime: 3000,
+      });
     } finally {
       setLoading(false);
     }
@@ -175,7 +182,13 @@ const ExpensesScreen = ({ navigation }) => {
         }
       }
     } catch (error) {
-      Alert.alert('Error', expenseData.isRecurring ? 'Failed to create recurring expense' : (editingExpense ? 'Failed to update expense' : 'Failed to add expense'));
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: expenseData.isRecurring ? 'Failed to create recurring expense' : (editingExpense ? 'Failed to update expense' : 'Failed to add expense'),
+        position: 'top',
+        visibilityTime: 3000,
+      });
     }
   };
 
@@ -196,7 +209,13 @@ const ExpensesScreen = ({ navigation }) => {
       setShowDeleteModal(false);
       setDeletingExpenseId(null);
     } catch (error) {
-      Alert.alert('Error', 'Failed to delete expense');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to delete expense',
+        position: 'top',
+        visibilityTime: 3000,
+      });
     }
   };
 

@@ -21,8 +21,10 @@ import {
   Spinner,
 } from '@gluestack-ui/themed';
 import Icon from '@expo/vector-icons/MaterialIcons';
+import Toast from 'react-native-toast-message';
 import { StorageService } from '../services/StorageService';
 import ExportService from '../services/ExportService';
+import ImportService from '../services/ImportService';
 import CurrencyService from '../services/CurrencyService';
 import NotificationService from '../services/NotificationService';
 import BiometricService from '../services/BiometricService';
@@ -84,22 +86,46 @@ const SettingsScreen = ({ navigation }) => {
     const budgetAmount = parseFloat(tempBudget);
     
     if (!tempBudget || isNaN(budgetAmount) || budgetAmount <= 0) {
-      Alert.alert('Error', 'Please enter a valid budget amount');
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Amount',
+        text2: 'Please enter a valid budget amount',
+        position: 'top',
+        visibilityTime: 3000,
+      });
       return;
     }
 
     await updateSetting('monthlyBudget', budgetAmount);
     setEditingBudget(false);
-    Alert.alert('Success', 'Monthly budget updated successfully');
+    Toast.show({
+      type: 'success',
+      text1: 'Budget Updated',
+      text2: `Monthly budget set to $${budgetAmount.toFixed(2)}`,
+      position: 'top',
+      visibilityTime: 2500,
+    });
   };
 
   const handleCurrencyChange = async (currencyCode) => {
     try {
       await updateSetting('currency', currencyCode);
       setShowCurrencyModal(false);
-      Alert.alert('Success', `Currency changed to ${currencyCode}`);
+      Toast.show({
+        type: 'success',
+        text1: 'Currency Updated',
+        text2: `Currency changed to ${currencyCode}`,
+        position: 'top',
+        visibilityTime: 2500,
+      });
     } catch (error) {
-      Alert.alert('Error', 'Failed to change currency');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to change currency',
+        position: 'top',
+        visibilityTime: 3000,
+      });
     }
   };
 
@@ -120,18 +146,42 @@ const SettingsScreen = ({ navigation }) => {
         if (result) {
           setBiometricEnabled(true);
           await updateSetting('biometricAuth', true);
-          Alert.alert('Success', 'Biometric authentication enabled. You will be prompted to authenticate when opening the app.');
+          Toast.show({
+            type: 'success',
+            text1: 'Biometric Enabled',
+            text2: 'You will be prompted to authenticate when opening the app',
+            position: 'top',
+            visibilityTime: 3000,
+          });
         } else {
-          Alert.alert('Error', 'Failed to enable biometric authentication');
+          Toast.show({
+            type: 'error',
+            text1: 'Error',
+            text2: 'Failed to enable biometric authentication',
+            position: 'top',
+            visibilityTime: 3000,
+          });
         }
       } else {
         const result = await BiometricService.disableBiometric();
         if (result) {
           setBiometricEnabled(false);
           await updateSetting('biometricAuth', false);
-          Alert.alert('Success', 'Biometric authentication disabled');
+          Toast.show({
+            type: 'success',
+            text1: 'Biometric Disabled',
+            text2: 'Biometric authentication has been turned off',
+            position: 'top',
+            visibilityTime: 2500,
+          });
         } else {
-          Alert.alert('Error', 'Failed to disable biometric authentication');
+          Toast.show({
+            type: 'error',
+            text1: 'Error',
+            text2: 'Failed to disable biometric authentication',
+            position: 'top',
+            visibilityTime: 3000,
+          });
         }
       }
     } catch (error) {
@@ -141,6 +191,60 @@ const SettingsScreen = ({ navigation }) => {
   };
 
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+
+  const handleImportData = async () => {
+    Alert.alert(
+      'Import Data',
+      'Select a file to import. Supported formats: JSON (full backup) or CSV (expenses only).\n\nNote: Importing will merge with your existing data, not replace it.',
+      [
+        {
+          text: 'Choose File',
+          onPress: () => performImport(),
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  const performImport = async () => {
+    setImporting(true);
+    try {
+      const result = await ImportService.pickAndImportFile();
+      
+      if (result.canceled) {
+        setImporting(false);
+        return;
+      }
+
+      if (result.success) {
+        await loadSettings();
+        
+        let message = result.message;
+        if (result.warnings && result.warnings.length > 0) {
+          message += ` (${result.warnings.length} items skipped)`;
+        }
+        
+        Toast.show({
+          type: 'success',
+          text1: 'Import Successful',
+          text2: message,
+          position: 'top',
+          visibilityTime: 4000,
+        });
+      }
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Import Failed',
+        text2: error.message || 'Failed to import data',
+        position: 'top',
+        visibilityTime: 3500,
+      });
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const handleExportData = async () => {
     const isAvailable = await ExportService.isSharingAvailable();
@@ -171,11 +275,31 @@ const SettingsScreen = ({ navigation }) => {
     try {
       if (format === 'json') {
         await ExportService.exportAsJSON();
+        Toast.show({
+          type: 'success',
+          text1: 'Export Successful',
+          text2: 'JSON file has been saved',
+          position: 'top',
+          visibilityTime: 3000,
+        });
       } else {
         await ExportService.exportAsCSV();
+        Toast.show({
+          type: 'success',
+          text1: 'Export Successful',
+          text2: 'CSV file has been saved',
+          position: 'top',
+          visibilityTime: 3000,
+        });
       }
     } catch (error) {
-      Alert.alert('Export Failed', error.message || 'Failed to export data');
+      Toast.show({
+        type: 'error',
+        text1: 'Export Failed',
+        text2: error.message || 'Failed to export data',
+        position: 'top',
+        visibilityTime: 3500,
+      });
     } finally {
       setExporting(false);
     }
@@ -196,9 +320,21 @@ const SettingsScreen = ({ navigation }) => {
               await StorageService.saveBudgets([]);
               await StorageService.saveSettings(StorageService.getDefaultSettings());
               await loadSettings();
-              Alert.alert('Success', 'All data has been cleared');
+              Toast.show({
+                type: 'success',
+                text1: 'Data Cleared',
+                text2: 'All data has been permanently deleted',
+                position: 'top',
+                visibilityTime: 3000,
+              });
             } catch (error) {
-              Alert.alert('Error', 'Failed to clear data');
+              Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to clear data',
+                position: 'top',
+                visibilityTime: 3000,
+              });
             }
           },
         },
@@ -273,6 +409,9 @@ const SettingsScreen = ({ navigation }) => {
                   const parts = numericValue.split('.');
                   if (parts.length > 2) {
                     setTempBudget(parts[0] + '.' + parts[1]);
+                  } else if (parts.length === 2 && parts[1].length > 2) {
+                    // Limit to 2 decimal places
+                    setTempBudget(parts[0] + '.' + parts[1].substring(0, 2));
                   } else {
                     setTempBudget(numericValue);
                   }
@@ -353,9 +492,23 @@ const SettingsScreen = ({ navigation }) => {
                 await updateSetting('notifications', true);
                 await NotificationService.scheduleDailySummary(20, 0);
                 await NotificationService.scheduleWeeklyReview(2, 10, 0);
+                Toast.show({
+                  type: 'success',
+                  text1: 'Notifications Enabled',
+                  text2: 'You will receive budget alerts and reminders',
+                  position: 'top',
+                  visibilityTime: 2500,
+                });
               } else {
                 await NotificationService.cancelAllNotifications();
                 await updateSetting('notifications', false);
+                Toast.show({
+                  type: 'info',
+                  text1: 'Notifications Disabled',
+                  text2: 'You will no longer receive alerts',
+                  position: 'top',
+                  visibilityTime: 2500,
+                });
               }
             }}
             trackColor={{ false: '#e2e8f0', true: colors.primaryLighter }}
@@ -374,7 +527,16 @@ const SettingsScreen = ({ navigation }) => {
           </VStack>
           <Switch
             value={isDarkMode}
-            onValueChange={(value) => toggleDarkMode(value)}
+            onValueChange={(value) => {
+              toggleDarkMode(value);
+              Toast.show({
+                type: 'info',
+                text1: value ? 'Dark Mode Enabled' : 'Light Mode Enabled',
+                text2: `Theme switched to ${value ? 'dark' : 'light'} mode`,
+                position: 'top',
+                visibilityTime: 2000,
+              });
+            }}
             trackColor={{ false: '#e2e8f0', true: colors.primaryLighter }}
             thumbColor={isDarkMode ? colors.primary : '#ffffff'}
           />
@@ -405,6 +567,29 @@ const SettingsScreen = ({ navigation }) => {
       <Box mx="$4" mt="$4" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
         <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mb="$4">Data Management</Text>
         
+        <Pressable onPress={handleImportData} py="$3" disabled={importing} opacity={importing ? 0.5 : 1}>
+          <HStack justifyContent="space-between" alignItems="center">
+            <HStack alignItems="center" flex={1}>
+              <Icon name="file-upload" size={24} color={colors.success} />
+              <VStack ml="$3" flex={1}>
+                <Text fontWeight="$medium" fontSize="$md" color={colors.text} mb="$1">
+                  {importing ? 'Importing...' : 'Import Data'}
+                </Text>
+                <Text fontSize="$sm" color={colors.textSecondary}>
+                  Restore from JSON, CSV, or Excel file
+                </Text>
+              </VStack>
+            </HStack>
+            {importing ? (
+              <Spinner size="small" color={colors.success} />
+            ) : (
+              <Icon name="chevron-right" size={24} color={colors.textMuted} />
+            )}
+          </HStack>
+        </Pressable>
+
+        <Divider my="$4" />
+
         <Pressable onPress={handleExportData} py="$3" disabled={exporting} opacity={exporting ? 0.5 : 1}>
           <HStack justifyContent="space-between" alignItems="center">
             <HStack alignItems="center" flex={1}>

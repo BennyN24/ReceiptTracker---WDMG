@@ -21,6 +21,7 @@ import {
 } from '@gluestack-ui/themed';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import Toast from 'react-native-toast-message';
 import { useThemeColors } from '../hooks/useThemeColors';
 
 const AddExpenseModal = ({ onClose, onSave, categories, initialData, receiptImageUri }) => {
@@ -92,6 +93,13 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData, receiptImag
 
   const handleSave = () => {
     if (!validateForm()) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please fill in all required fields correctly',
+        position: 'top',
+        visibilityTime: 3000,
+      });
       return;
     }
 
@@ -106,6 +114,13 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData, receiptImag
     };
 
     onSave(expenseData);
+    Toast.show({
+      type: 'success',
+      text1: initialData ? 'Expense Updated' : 'Expense Added',
+      text2: `${vendor} - $${parseFloat(amount).toFixed(2)}`,
+      position: 'top',
+      visibilityTime: 2500,
+    });
   };
 
   const handleDateChange = (selectedDate) => {
@@ -125,16 +140,22 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData, receiptImag
 
   return (
     <Portal>
-      <Box flex={1} bg={colors.white}>
-        <HStack bg={colors.white} borderBottomWidth={1} borderBottomColor={colors.border} py="$3" px="$2" alignItems="center" justifyContent="space-between" pt="$12">
-          <Pressable onPress={onClose} p="$2">
-            <Icon name="close" size={24} color={colors.text} />
-          </Pressable>
-          <Text fontWeight="$semibold" fontSize="$lg" color={colors.text}>{initialData ? 'Edit Expense' : 'Add Expense'}</Text>
-          <Pressable onPress={handleSave} p="$2">
-            <Icon name="check" size={24} color={colors.primary} />
-          </Pressable>
-        </HStack>
+      <Modal
+        visible={true}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={onClose}
+      >
+        <Box flex={1} bg={colors.white}>
+          <HStack bg={colors.white} borderBottomWidth={1} borderBottomColor={colors.border} py="$3" px="$2" alignItems="center" justifyContent="space-between" pt="$12">
+            <Pressable onPress={onClose} p="$2">
+              <Icon name="close" size={24} color={colors.text} />
+            </Pressable>
+            <Text fontWeight="$semibold" fontSize="$lg" color={colors.text}>{initialData ? 'Edit Expense' : 'Add Expense'}</Text>
+            <Pressable onPress={handleSave} p="$2">
+              <Icon name="check" size={24} color={colors.primary} />
+            </Pressable>
+          </HStack>
 
         <ScrollView flex={1} p="$4" showsVerticalScrollIndicator={false}>
           {/* Receipt Image Preview */}
@@ -217,7 +238,11 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData, receiptImag
                   // Ensure only one decimal point
                   const parts = numericValue.split('.');
                   if (parts.length > 2) {
+                    // Multiple decimal points, keep only first
                     setAmount(parts[0] + '.' + parts[1]);
+                  } else if (parts.length === 2 && parts[1].length > 2) {
+                    // Limit to 2 decimal places
+                    setAmount(parts[0] + '.' + parts[1].substring(0, 2));
                   } else {
                     setAmount(numericValue);
                   }
@@ -421,7 +446,8 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData, receiptImag
             maximumDate={new Date()}
           />
         )}
-      </Box>
+        </Box>
+      </Modal>
     </Portal>
   );
 };

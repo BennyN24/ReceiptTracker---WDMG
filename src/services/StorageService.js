@@ -417,14 +417,44 @@ export const StorageService = {
       if (!category.name || !category.name.trim()) {
         throw new Error('Category name is required');
       }
+
+      const trimmedName = category.name.trim();
+
+      // Validate name length
+      if (trimmedName.length > 50) {
+        throw new Error('Category name must be 50 characters or less');
+      }
+
       const categories = await this.getCategories();
+
+      // Check for duplicate names (case-insensitive)
+      const duplicateExists = categories.some(
+        cat => cat.name.toLowerCase() === trimmedName.toLowerCase()
+      );
+      if (duplicateExists) {
+        throw new Error('A category with this name already exists');
+      }
+
+      // Validate color format (hex color)
+      const color = category.color || '#6366f1';
+      if (!/^#[0-9A-Fa-f]{6}$/.test(color)) {
+        throw new Error('Invalid color format. Must be hex color (e.g., #6366f1)');
+      }
+
+      // Validate icon (basic check - could be expanded)
+      const icon = category.icon || 'label';
+      if (typeof icon !== 'string' || icon.length === 0) {
+        throw new Error('Invalid icon value');
+      }
+
       const newCategory = {
         ...category,
-        id: `custom_${Date.now()}`,
-        name: category.name.trim(),
-        icon: category.icon || 'label',
-        color: category.color || '#6366f1',
+        id: await generateSecureId('cat'),
+        name: trimmedName,
+        icon,
+        color,
       };
+
       categories.push(newCategory);
       await this.saveCategories(categories);
       return newCategory;
@@ -550,7 +580,7 @@ export const StorageService = {
       const { expenses, budgets, categories, settings } = data;
       const importErrors = [];
 
-      // Validate and filter expenses individually
+      // Validate and MERGE expenses individually
       if (expenses && Array.isArray(expenses)) {
         const validExpenses = expenses.filter((expense, index) => {
           try {
@@ -564,10 +594,23 @@ export const StorageService = {
             return false;
           }
         });
-        await this.saveExpenses(validExpenses);
+        
+        // Merge with existing expenses
+        const existingExpenses = await this.getExpenses();
+        const existingMap = new Map(existingExpenses.map(e => [e.id, e]));
+        
+        validExpenses.forEach(expense => {
+          existingMap.set(expense.id, {
+            ...existingMap.get(expense.id),
+            ...expense,
+            updatedAt: new Date().toISOString(),
+          });
+        });
+        
+        await this.saveExpenses(Array.from(existingMap.values()));
       }
 
-      // Validate and filter budgets individually
+      // Validate and MERGE budgets individually
       if (budgets && Array.isArray(budgets)) {
         const validBudgets = budgets.filter((budget, index) => {
           try {
@@ -581,10 +624,23 @@ export const StorageService = {
             return false;
           }
         });
-        await this.saveBudgets(validBudgets);
+        
+        // Merge with existing budgets
+        const existingBudgets = await this.getBudgets();
+        const existingMap = new Map(existingBudgets.map(b => [b.id, b]));
+        
+        validBudgets.forEach(budget => {
+          existingMap.set(budget.id, {
+            ...existingMap.get(budget.id),
+            ...budget,
+            updatedAt: new Date().toISOString(),
+          });
+        });
+        
+        await this.saveBudgets(Array.from(existingMap.values()));
       }
 
-      // Validate categories structure
+      // Validate and MERGE categories structure
       if (categories && Array.isArray(categories)) {
         const validCategories = categories.filter((cat, index) => {
           if (!cat || typeof cat !== 'object') {
@@ -601,17 +657,29 @@ export const StorageService = {
           }
           return true;
         });
-        await this.saveCategories(validCategories);
+        
+        // Merge with existing categories
+        const existingCategories = await this.getCategories();
+        const existingMap = new Map(existingCategories.map(c => [c.id, c]));
+        
+        validCategories.forEach(category => {
+          existingMap.set(category.id, category);
+        });
+        
+        await this.saveCategories(Array.from(existingMap.values()));
       }
 
-      // Validate settings structure with allowed keys only
+      // Validate and MERGE settings structure with allowed keys only
       if (settings && typeof settings === 'object' && !Array.isArray(settings)) {
         const allowedKeys = [
           'monthlyBudget', 'currency', 'notifications',
           'darkMode', 'biometricAuth', 'autoBackup', 'passcodeLock',
           'autoDetectCurrency', 'locationDetectionAttempted', 'detectedCountryCode',
         ];
-        const sanitizedSettings = {};
+        
+        // Get existing settings to merge with
+        const existingSettings = await this.getSettings();
+        const sanitizedSettings = { ...existingSettings };
         const defaults = this.getDefaultSettings();
 
         for (const key of allowedKeys) {
@@ -622,10 +690,8 @@ export const StorageService = {
               sanitizedSettings[key] = value;
             } else {
               importErrors.push(`Settings.${key}: expected ${expectedType}, got ${typeof value}`);
-              sanitizedSettings[key] = defaults[key];
+              // Keep existing value instead of resetting to default
             }
-          } else {
-            sanitizedSettings[key] = defaults[key];
           }
         }
         await this.saveSettings(sanitizedSettings);

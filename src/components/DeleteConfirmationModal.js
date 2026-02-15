@@ -9,6 +9,7 @@ import {
   VStack,
   Pressable,
 } from '@gluestack-ui/themed';
+import Toast from 'react-native-toast-message';
 import { useThemeColors } from '../hooks/useThemeColors';
 
 const DeleteConfirmationModal = ({ visible, onConfirm, onCancel, title = 'Delete Item', message = 'Are you sure you want to delete this item?' }) => {
@@ -36,7 +37,16 @@ const DeleteConfirmationModal = ({ visible, onConfirm, onCancel, title = 'Delete
               <Text color={colors.text} fontWeight="$medium">Cancel</Text>
             </Pressable>
             <Pressable
-              onPress={onConfirm}
+              onPress={() => {
+                onConfirm();
+                Toast.show({
+                  type: 'success',
+                  text1: 'Deleted Successfully',
+                  text2: 'Item has been removed',
+                  position: 'top',
+                  visibilityTime: 2000,
+                });
+              }}
               borderRadius="$lg"
               px="$4"
               py="$2.5"

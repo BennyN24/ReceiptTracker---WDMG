@@ -2,6 +2,7 @@ import React, { useContext, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { GluestackUIProvider } from '@gluestack-ui/themed';
+import Toast from 'react-native-toast-message';
 import AppNavigator from './src/navigation/AppNavigator';
 import { ThemeProvider, ThemeContext } from './src/context/ThemeContext';
 import { getTheme, gluestackThemeConfig } from './src/styles/theme';
@@ -73,8 +74,14 @@ function AppContent() {
       }
     };
 
-    initNotifications();
-    initLocationCurrency();
+    // Properly handle promises with explicit catch
+    initNotifications().catch(error => {
+      console.error('Unhandled error in initNotifications:', error);
+    });
+    
+    initLocationCurrency().catch(error => {
+      console.error('Unhandled error in initLocationCurrency:', error);
+    });
   }, []);
 
   return (
@@ -92,6 +99,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <AppContent />
+      <Toast />
     </ThemeProvider>
   );
 }

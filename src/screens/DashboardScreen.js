@@ -20,6 +20,7 @@ import {
 } from '@gluestack-ui/themed';
 import { ProgressBar } from 'react-native-paper';
 import Icon from '@expo/vector-icons/MaterialIcons';
+import Toast from 'react-native-toast-message';
 import { PieChart, BarChart } from 'react-native-chart-kit';
 import { useFocusEffect } from '@react-navigation/native';
 import { StorageService } from '../services/StorageService';
@@ -65,7 +66,13 @@ const DashboardScreen = ({ navigation }) => {
       setCategories(categoriesData);
       setSettings(settingsData);
     } catch (error) {
-      Alert.alert('Error', 'Failed to load data');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to load data',
+        position: 'top',
+        visibilityTime: 3000,
+      });
     } finally {
       setLoading(false);
     }

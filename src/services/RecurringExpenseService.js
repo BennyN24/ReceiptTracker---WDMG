@@ -141,38 +141,60 @@ const RecurringExpenseService = {
 
   /**
    * Process due recurring expenses (create actual expenses)
+   * Includes idempotency check to prevent duplicates
    */
   async processDueExpenses(StorageService) {
     try {
       const dueExpenses = await this.getExpensesDueToday();
       const createdExpenses = [];
+      const errors = [];
+      const today = new Date().toISOString().split('T')[0];
+
+      // Get existing expenses to check for duplicates
+      const existingExpenses = await StorageService.getExpenses();
+      const todayRecurringIds = new Set(
+        existingExpenses
+          .filter(e => e.date === today && e.recurringId)
+          .map(e => e.recurringId)
+      );
 
       for (const recurring of dueExpenses) {
-        // Create actual expense from recurring template
-        const expense = await StorageService.addExpense({
-          vendor: recurring.vendor,
-          amount: recurring.amount,
-          category: recurring.category,
-          date: new Date().toISOString().split('T')[0],
-          notes: `${recurring.notes} (Recurring)`.trim(),
-          recurringId: recurring.id,
-        });
+        try {
+          // Idempotency check: skip if already created today
+          if (todayRecurringIds.has(recurring.id)) {
+            console.log(`Skipping duplicate recurring expense: ${recurring.vendor}`);
+            continue;
+          }
 
-        createdExpenses.push(expense);
+          // Create actual expense from recurring template
+          const expense = await StorageService.addExpense({
+            vendor: recurring.vendor,
+            amount: recurring.amount,
+            category: recurring.category,
+            date: today,
+            notes: `${recurring.notes} (Recurring)`.trim(),
+            recurringId: recurring.id,
+          });
 
-        // Update next due date
-        const nextDueDate = this._calculateNextDueDate(
-          new Date().toISOString().split('T')[0],
-          recurring.frequency
-        );
+          createdExpenses.push(expense);
 
-        await this.updateRecurringExpense(recurring.id, { nextDueDate });
+          // Update next due date
+          const nextDueDate = this._calculateNextDueDate(today, recurring.frequency);
+          await this.updateRecurringExpense(recurring.id, { nextDueDate });
+        } catch (error) {
+          console.error(`Failed to process recurring expense ${recurring.id}:`, error);
+          errors.push({ recurringId: recurring.id, error: error.message });
+        }
+      }
+
+      if (errors.length > 0) {
+        console.warn('Some recurring expenses failed to process:', errors);
       }
 
       return createdExpenses;
     } catch (error) {
       console.error('Process due expenses error:', error);
-      return [];
+      throw error; // Re-throw instead of silently returning empty array
     }
   },
 
@@ -264,24 +286,69 @@ const RecurringExpenseService = {
   },
 
   /**
+   * Import recurring expenses from backup
+   */
+  async importRecurringExpenses(recurringExpenses) {
+    try {
+      if (!Array.isArray(recurringExpenses)) {
+        throw new Error('Recurring expenses must be an array');
+      }
+
+      const validExpenses = recurringExpenses.filter(expense => {
+        return expense.vendor && expense.amount && expense.category && 
+               expense.frequency && expense.startDate;
+      });
+
+      if (validExpenses.length === 0) {
+        return { success: true, imported: 0 };
+      }
+
+      const existingExpenses = await this.getRecurringExpenses();
+      const existingIds = new Set(existingExpenses.map(e => e.id));
+      
+      const newExpenses = validExpenses.filter(e => !existingIds.has(e.id));
+      const mergedExpenses = [...existingExpenses, ...newExpenses];
+
+      await AsyncStorage.setItem(RECURRING_EXPENSES_KEY, JSON.stringify(mergedExpenses));
+
+      return { success: true, imported: newExpenses.length };
+    } catch (error) {
+      console.error('Import recurring expenses error:', error);
+      throw error;
+    }
+  },
+
+  /**
    * Count how many times a recurring expense occurs in a period
+   * Includes safety guard against infinite loops
    */
   _countOccurrences(startDate, periodStart, periodEnd, frequency) {
     const start = new Date(startDate);
     const pStart = new Date(periodStart);
     const pEnd = new Date(periodEnd);
 
+    // Validate dates
+    if (isNaN(start.getTime()) || isNaN(pStart.getTime()) || isNaN(pEnd.getTime())) {
+      console.error('Invalid date in _countOccurrences');
+      return 0;
+    }
+
     if (start > pEnd) return 0;
 
     let count = 0;
     let current = new Date(start);
+    let iterations = 0;
+    const MAX_ITERATIONS = 10000; // Safety guard against infinite loops
 
-    while (current <= pEnd) {
+    while (current <= pEnd && iterations < MAX_ITERATIONS) {
+      iterations++;
+
       if (current >= pStart && current <= pEnd) {
         count++;
       }
 
       // Move to next occurrence
+      const prevTime = current.getTime();
       switch (frequency) {
         case 'daily':
           current.setDate(current.getDate() + 1);
@@ -302,8 +369,19 @@ const RecurringExpenseService = {
           current.setFullYear(current.getFullYear() + 1);
           break;
         default:
+          console.warn(`Unknown frequency: ${frequency}`);
           return count;
       }
+
+      // Safety check: ensure date actually advanced
+      if (current.getTime() <= prevTime) {
+        console.error('Date did not advance in _countOccurrences, breaking loop');
+        break;
+      }
+    }
+
+    if (iterations >= MAX_ITERATIONS) {
+      console.error('Max iterations reached in _countOccurrences');
     }
 
     return count;

@@ -17,6 +17,7 @@ import {
   InputField,
 } from '@gluestack-ui/themed';
 import Icon from '@expo/vector-icons/MaterialIcons';
+import Toast from 'react-native-toast-message';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { StorageService } from '../services/StorageService';
 
@@ -67,6 +68,13 @@ const AddBudgetModal = ({ onClose, onSave, visible, initialData, categories = []
   const handleCreateCustomCategory = async () => {
     if (!customName.trim()) {
       setErrors(prev => ({ ...prev, customName: 'Category name is required' }));
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Category name is required',
+        position: 'top',
+        visibilityTime: 2500,
+      });
       return;
     }
 
@@ -84,11 +92,25 @@ const AddBudgetModal = ({ onClose, onSave, visible, initialData, categories = []
       setCustomName('');
       setErrors(prev => { const { customName, ...rest } = prev; return rest; });
 
+      Toast.show({
+        type: 'success',
+        text1: 'Category Created',
+        text2: `${newCategory.name} has been added`,
+        position: 'top',
+        visibilityTime: 2500,
+      });
+
       if (onCategoryAdded) {
         onCategoryAdded(newCategory);
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to create category');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to create category',
+        position: 'top',
+        visibilityTime: 3000,
+      });
     } finally {
       setSavingCategory(false);
     }
@@ -112,6 +134,13 @@ const AddBudgetModal = ({ onClose, onSave, visible, initialData, categories = []
 
   const handleSave = () => {
     if (!validateForm()) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please fill in all required fields correctly',
+        position: 'top',
+        visibilityTime: 3000,
+      });
       return;
     }
 
@@ -124,6 +153,13 @@ const AddBudgetModal = ({ onClose, onSave, visible, initialData, categories = []
     };
 
     onSave(budgetData);
+    Toast.show({
+      type: 'success',
+      text1: initialData ? 'Budget Updated' : 'Budget Created',
+      text2: `${selectedCategory?.name || name} - $${parseFloat(amount).toFixed(2)}/${period}`,
+      position: 'top',
+      visibilityTime: 2500,
+    });
   };
 
   return (
@@ -319,6 +355,9 @@ const AddBudgetModal = ({ onClose, onSave, visible, initialData, categories = []
                     const parts = numericValue.split('.');
                     if (parts.length > 2) {
                       setAmount(parts[0] + '.' + parts[1]);
+                    } else if (parts.length === 2 && parts[1].length > 2) {
+                      // Limit to 2 decimal places
+                      setAmount(parts[0] + '.' + parts[1].substring(0, 2));
                     } else {
                       setAmount(numericValue);
                     }
