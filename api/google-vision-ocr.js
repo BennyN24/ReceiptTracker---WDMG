@@ -1,8 +1,10 @@
-const GOOGLE_CLOUD_VISION_API_KEY = process.env.GOOGLE_CLOUD_API_KEY;
+const GOOGLE_CLOUD_VISION_API_KEY = process.env.GOOGLE_CLOUD_VISION_API_KEY;
 const GOOGLE_CLOUD_VISION_URL = `https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_CLOUD_VISION_API_KEY}`;
 
 const RATE_LIMIT_MAX_REQUESTS = 10;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+// WARNING: In-memory rate limiting is unreliable on serverless platforms (cold starts and multiple instances).
+// For production use, consider using a shared store like Upstash Redis or Vercel Edge Middleware rate limiting.
 const requestTracker = new Map();
 
 const isRateLimited = (clientId) => {
@@ -20,7 +22,6 @@ const recordRequest = (clientId) => {
 };
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, X-Client-ID');

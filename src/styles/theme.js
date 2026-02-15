@@ -38,9 +38,9 @@ export const darkColors = {
   background: '#0f172a',    // slate-900
   backgroundSecondary: '#1e293b', // slate-800
   surface: '#1e293b',       // slate-800
-  text: '#333333',          // pure white for maximum contrast
-  textSecondary: '#a8a7a7', // slate-200 (much brighter)
-  textMuted: '#868f9b',     // slate-400 (brighter than before)
+  text: '#f1f5f9',          // slate-100 for maximum contrast on dark backgrounds
+  textSecondary: '#cbd5e1', // slate-300
+  textMuted: '#94a3b8',     // slate-400
   border: '#334155',        // slate-700
   borderLight: '#475569',   // slate-600
   error: '#f87171',         // red-400
