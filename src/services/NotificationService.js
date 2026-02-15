@@ -108,6 +108,7 @@ const NotificationService = {
   async scheduleDailySummary(hour = 20, minute = 0) {
     try {
       const trigger = {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour,
         minute,
         repeats: true,
@@ -132,6 +133,7 @@ const NotificationService = {
   async scheduleWeeklyReview(dayOfWeek = 1, hour = 10, minute = 0) {
     try {
       const trigger = {
+        type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
         weekday: dayOfWeek, // 1 = Sunday, 2 = Monday, etc.
         hour,
         minute,

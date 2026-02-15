@@ -96,22 +96,30 @@ const LocationService = {
 
     // Attempt 2: Nominatim HTTP fallback (no API key required)
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=3`,
-        {
-          headers: {
-            'User-Agent': 'ReceiptTracker/1.0',
-            Accept: 'application/json',
-          },
-        }
-      );
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      if (response.ok) {
-        const data = await response.json();
-        const countryCode = data?.address?.country_code;
-        if (countryCode && typeof countryCode === 'string') {
-          return countryCode.toUpperCase();
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=3`,
+          {
+            headers: {
+              'User-Agent': 'ReceiptTracker/1.0',
+              Accept: 'application/json',
+            },
+            signal: controller.signal,
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const countryCode = data?.address?.country_code;
+          if (countryCode && typeof countryCode === 'string') {
+            return countryCode.toUpperCase();
+          }
         }
+      } finally {
+        clearTimeout(timeoutId);
       }
     } catch (fallbackError) {
       console.error('Fallback reverse geocoding also failed:', fallbackError);

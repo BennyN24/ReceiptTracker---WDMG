@@ -6,9 +6,11 @@ let _clientId = null;
 
 const getClientId = async () => {
   if (_clientId) return _clientId;
+  const randomBytes = await Crypto.getRandomBytesAsync(32);
+  const hex = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
   _clientId = await Crypto.digestStringAsync(
     Crypto.CryptoDigestAlgorithm.SHA256,
-    Math.random().toString(36) + Date.now().toString()
+    hex
   );
   return _clientId;
 };

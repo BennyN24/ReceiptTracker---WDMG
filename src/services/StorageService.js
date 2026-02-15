@@ -47,18 +47,8 @@ const encryptData = async (data, key) => {
 };
 
 const decryptData = async (encryptedData, key, fallbackData) => {
-  if (!key) {
-    try {
-      return JSON.parse(encryptedData);
-    } catch {
-      return fallbackData;
-    }
-  }
   try {
-    // For this implementation, we'll use a simple approach
-    // In production, consider using a proper encryption library
-    const data = await AsyncStorage.getItem(STORAGE_KEYS.EXPENSES);
-    return data ? JSON.parse(data) : fallbackData;
+    return JSON.parse(encryptedData);
   } catch (error) {
     console.warn('Decryption failed, using fallback data');
     return fallbackData;

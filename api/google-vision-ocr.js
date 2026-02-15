@@ -1,5 +1,5 @@
 const GOOGLE_CLOUD_VISION_API_KEY = process.env.GOOGLE_CLOUD_VISION_API_KEY;
-const GOOGLE_CLOUD_VISION_URL = `https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_CLOUD_VISION_API_KEY}`;
+const GOOGLE_CLOUD_VISION_BASE_URL = 'https://vision.googleapis.com/v1/images:annotate';
 
 const RATE_LIMIT_MAX_REQUESTS = 10;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
@@ -73,7 +73,7 @@ export default async function handler(req, res) {
       ],
     };
 
-    const response = await fetch(GOOGLE_CLOUD_VISION_URL, {
+    const response = await fetch(`${GOOGLE_CLOUD_VISION_BASE_URL}?key=${GOOGLE_CLOUD_VISION_API_KEY}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

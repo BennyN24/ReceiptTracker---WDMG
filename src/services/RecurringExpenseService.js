@@ -130,8 +130,9 @@ const RecurringExpenseService = {
       const today = new Date().toISOString().split('T')[0];
 
       return active.filter(expense => {
+        if (!expense.nextDueDate || typeof expense.nextDueDate !== 'string') return false;
         const dueDate = expense.nextDueDate.split('T')[0];
-        return dueDate === today;
+        return dueDate === today && /^\d{4}-\d{2}-\d{2}$/.test(dueDate);
       });
     } catch (error) {
       console.error('Get expenses due today error:', error);

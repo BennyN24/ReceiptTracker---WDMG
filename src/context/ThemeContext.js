@@ -14,9 +14,14 @@ export const ThemeProvider = ({ children }) => {
   const loadThemePreference = async () => {
     try {
       const settings = await StorageService.getSettings();
-      setIsDarkMode(settings.darkMode || false);
+      if (settings && typeof settings.darkMode === 'boolean') {
+        setIsDarkMode(settings.darkMode);
+      } else {
+        setIsDarkMode(false);
+      }
     } catch (error) {
       console.error('Failed to load theme preference:', error);
+      setIsDarkMode(false);
     } finally {
       setIsLoading(false);
     }

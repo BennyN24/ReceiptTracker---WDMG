@@ -17,11 +17,17 @@ function AppContent() {
   const currentTheme = getTheme(isDarkMode);
 
   useEffect(() => {
+    let isMounted = true;
+
     const initNotifications = async () => {
       try {
         const settings = await StorageService.getSettings();
-        if (settings.notifications) {
+        if (!isMounted) return;
+        
+        if (settings?.notifications) {
           const granted = await NotificationService.initialize();
+          if (!isMounted) return;
+          
           if (granted) {
             // Schedule recurring notifications
             await NotificationService.scheduleDailySummary(20, 0);
@@ -29,6 +35,8 @@ function AppContent() {
 
             // Check for recurring expenses due today
             const dueExpenses = await RecurringExpenseService.getExpensesDueToday();
+            if (!isMounted) return;
+            
             if (dueExpenses.length > 0) {
               const names = dueExpenses.map(e => e.vendor).join(', ');
               await NotificationService.sendExpenseReminder(
@@ -38,17 +46,21 @@ function AppContent() {
           }
         }
       } catch (error) {
-        console.error('Notification init error:', error);
+        if (isMounted) {
+          console.error('Notification init error:', error);
+        }
       }
     };
 
     const initLocationCurrency = async () => {
       try {
         const settings = await StorageService.getSettings();
+        if (!isMounted) return;
 
         // Only auto-detect if enabled and not yet attempted
         if (settings.autoDetectCurrency && !settings.locationDetectionAttempted) {
           const result = await LocationService.detectCurrency();
+          if (!isMounted) return;
 
           if (result) {
             const updatedSettings = {
@@ -58,9 +70,6 @@ function AppContent() {
               detectedCountryCode: result.countryCode,
             };
             await StorageService.saveSettings(updatedSettings);
-
-            // Also update the CurrencySettingsScreen storage key
-            await AsyncStorage.setItem('@receipt_tracker_currency', result.currencyCode);
           } else {
             // Mark as attempted even if detection failed
             await StorageService.saveSettings({
@@ -70,18 +79,30 @@ function AppContent() {
           }
         }
       } catch (error) {
-        console.error('Location currency detection error:', error);
+        if (isMounted) {
+          console.error('Location currency detection error:', error);
+        }
       }
     };
 
-    // Properly handle promises with explicit catch
-    initNotifications().catch(error => {
-      console.error('Unhandled error in initNotifications:', error);
-    });
-    
-    initLocationCurrency().catch(error => {
-      console.error('Unhandled error in initLocationCurrency:', error);
-    });
+    // Run both initialization tasks in parallel
+    (async () => {
+      try {
+        await Promise.all([
+          initNotifications(),
+          initLocationCurrency(),
+        ]);
+      } catch (error) {
+        if (isMounted) {
+          console.error('Initialization error:', error);
+        }
+      }
+    })();
+
+    // Cleanup function to prevent state updates on unmounted component
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return (
