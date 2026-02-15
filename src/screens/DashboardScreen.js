@@ -96,7 +96,7 @@ const DashboardScreen = ({ navigation }) => {
 
   const getBudgetPercentage = useMemo(() => {
     const totalSpent = getTotalSpent;
-    const budgetLimit = settings.monthlyBudget || 1550;
+    const budgetLimit = settings.monthlyBudget || 5000;
     return Math.min((totalSpent / budgetLimit) * 100, 100);
   }, [getTotalSpent, settings.monthlyBudget]);
 

@@ -47,6 +47,7 @@ const MainTabNavigator = () => {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
+        tabBarShowLabel: false,
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
 
@@ -58,9 +59,9 @@ const MainTabNavigator = () => {
             iconName = 'photo-camera';
             return (
               <View style={{
-                width: 60,
-                height: 60,
-                borderRadius: 28,
+                width: 80,
+                height: 80,
+                borderRadius: 40,
                 backgroundColor: '#16a34a',
                 justifyContent: 'center',
                 alignItems: 'center',
@@ -82,7 +83,7 @@ const MainTabNavigator = () => {
         tabBarStyle: {
           backgroundColor: '#ffffff',
           borderTopColor: '#e2e8f0',
-          height: 60,
+          height: 80,
           paddingBottom: 8,
           paddingTop: 8,
         },

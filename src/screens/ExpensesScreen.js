@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   StyleSheet,
   FlatList,
@@ -21,6 +21,7 @@ import {
   BadgeText,
   Spinner,
 } from '@gluestack-ui/themed';
+import { useFocusEffect } from '@react-navigation/native';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import AddExpenseModal from '../components/AddExpenseModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
@@ -49,6 +50,12 @@ const ExpensesScreen = ({ navigation }) => {
   useEffect(() => {
     loadData();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
 
   const filterAndSortExpenses = useMemo(() => {
     let filtered = [...expenses];
