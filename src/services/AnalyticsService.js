@@ -219,18 +219,18 @@ const AnalyticsService = {
 
       // Budget exceeded
       const exceeded = byCategory.filter(cat => {
-        const budget = budgets.find(b => b.name === cat.category);
+        const budget = budgets.find(b => b.categoryId === cat.category);
         return budget && cat.amount > budget.amount;
       });
 
       if (exceeded.length > 0) {
         exceeded.forEach(cat => {
-          const budget = budgets.find(b => b.name === cat.category);
+          const budget = budgets.find(b => b.categoryId === cat.category);
           const overage = cat.amount - budget.amount;
           insights.push({
             type: 'budget_exceeded',
-            title: `Budget exceeded: ${cat.category}`,
-            message: `You exceeded your ${cat.category} budget by $${overage.toFixed(2)}`,
+            title: `Budget exceeded: ${budget.name}`,
+            message: `You exceeded your ${budget.name} budget by $${overage.toFixed(2)}`,
             severity: 'warning',
           });
         });
