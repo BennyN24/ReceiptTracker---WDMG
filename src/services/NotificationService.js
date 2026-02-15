@@ -33,6 +33,11 @@ const NotificationService = {
    */
   async sendBudgetAlert(budgetName, percentageUsed, remainingAmount, currencyCode = 'USD') {
     try {
+      // Only send alerts when usage is 75% or above
+      if (percentageUsed < 75) {
+        return;
+      }
+
       const symbol = CurrencyService.getSymbol(currencyCode);
       const title = `Budget Alert: ${budgetName}`;
       let body = '';
