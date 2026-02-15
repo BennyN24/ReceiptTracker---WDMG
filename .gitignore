@@ -2,6 +2,15 @@
 
 # dependencies
 node_modules/
+.env
+.env.*
+!.env.example
+.vercel
+api/.vercel
+api/node_modules
+api/.env
+api/.env.*
+!api/.env.example
 
 # Expo
 .expo/
@@ -39,3 +48,11 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+#windsurf
+.windsurf/rules/
+docs/
+
+#variables
+.env
+.env.local

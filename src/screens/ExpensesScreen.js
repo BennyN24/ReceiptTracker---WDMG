@@ -1,27 +1,39 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  View,
-  Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
   Alert,
-  Modal,
+  RefreshControl,
+  Platform,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import {
-  Card,
-  Button,
-  Searchbar,
-  Chip,
-  FAB,
-  Portal,
-  Divider,
-} from 'react-native-paper';
+  Box,
+  Text,
+  HStack,
+  VStack,
+  Pressable,
+  Input,
+  InputField,
+  InputIcon,
+  InputSlot,
+  Badge,
+  BadgeText,
+  Spinner,
+} from '@gluestack-ui/themed';
+import { useFocusEffect } from '@react-navigation/native';
 import Icon from '@expo/vector-icons/MaterialIcons';
+import Toast from 'react-native-toast-message';
 import AddExpenseModal from '../components/AddExpenseModal';
+import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import { StorageService } from '../services/StorageService';
+import RecurringExpenseService from '../services/RecurringExpenseService';
+import NotificationService from '../services/NotificationService';
+import CurrencyService from '../services/CurrencyService';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 const ExpensesScreen = ({ navigation }) => {
+  const colors = useThemeColors();
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
   const [filteredExpenses, setFilteredExpenses] = useState([]);
@@ -29,11 +41,46 @@ const ExpensesScreen = ({ navigation }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [sortBy, setSortBy] = useState('newest');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingExpense, setEditingExpense] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingExpenseId, setDeletingExpenseId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [settings, setSettings] = useState({ currency: 'USD' });
 
   useEffect(() => {
     loadData();
   }, []);
+
+  const loadData = useCallback(async () => {
+    try {
+      const [expensesData, categoriesData, settingsData] = await Promise.all([
+        StorageService.getExpenses(),
+        StorageService.getAllCategories(),
+        StorageService.getSettings(),
+      ]);
+      
+      setExpenses(expensesData);
+      setCategories(categoriesData);
+      setSettings(settingsData);
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to load expenses',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
   const filterAndSortExpenses = useMemo(() => {
     let filtered = [...expenses];
@@ -73,370 +120,346 @@ const ExpensesScreen = ({ navigation }) => {
     setFilteredExpenses(filterAndSortExpenses);
   }, [filterAndSortExpenses]);
 
-  const loadData = async () => {
-    try {
-      const [expensesData, categoriesData] = await Promise.all([
-        StorageService.getExpenses(),
-        StorageService.getCategories(),
-      ]);
-      
-      setExpenses(expensesData);
-      setCategories(categoriesData);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to load expenses');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }, [loadData]);
 
+  const handleEditExpense = useCallback((expense) => {
+    setEditingExpense(expense);
+    setShowAddModal(true);
+  }, []);
+
+  const handleDeleteExpense = useCallback((expenseId) => {
+    setDeletingExpenseId(expenseId);
+    setShowDeleteModal(true);
+  }, []);
 
   const handleAddExpense = async (expenseData) => {
     try {
-      await StorageService.addExpense(expenseData);
+      if (expenseData.isRecurring) {
+        const recurringData = {
+          vendor: expenseData.vendor,
+          amount: expenseData.amount,
+          category: expenseData.category,
+          frequency: expenseData.frequency,
+          startDate: expenseData.date,
+          endDate: null,
+          notes: expenseData.description,
+          receiptImage: editingExpense?.receiptImage || null,
+        };
+        await RecurringExpenseService.createRecurringExpense(recurringData);
+      } else {
+        if (editingExpense) {
+          await StorageService.updateExpense(editingExpense.id, expenseData);
+        } else {
+          await StorageService.addExpense(expenseData);
+        }
+      }
       await loadData();
       setShowAddModal(false);
+      setEditingExpense(null);
+
+      // Check budget and send notification if threshold exceeded
+      if (!editingExpense && !expenseData.isRecurring && settings.notifications) {
+        try {
+          const [allExpenses, currentSettings] = await Promise.all([
+            StorageService.getExpenses(),
+            StorageService.getSettings(),
+          ]);
+          const now = new Date();
+          const monthlyExpenses = allExpenses.filter(e => {
+            const d = new Date(e.date);
+            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+          });
+          const totalSpent = monthlyExpenses.reduce((sum, e) => sum + e.amount, 0);
+          const budget = currentSettings.monthlyBudget || 1550;
+          const percentage = (totalSpent / budget) * 100;
+          const remaining = budget - totalSpent;
+          const currencySymbol = CurrencyService.getSymbol(currentSettings.currency || 'USD');
+
+          if (percentage >= 75) {
+            await NotificationService.sendBudgetAlert(
+              `Monthly Budget (${currencySymbol}${budget.toFixed(2)})`,
+              percentage,
+              remaining,
+              currentSettings.currency || 'USD'
+            );
+          }
+        } catch (notifError) {
+          console.error('Budget notification check error:', notifError);
+        }
+      }
     } catch (error) {
-      Alert.alert('Error', 'Failed to add expense');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: expenseData.isRecurring ? 'Failed to create recurring expense' : (editingExpense ? 'Failed to update expense' : 'Failed to add expense'),
+        position: 'top',
+        visibilityTime: 3000,
+      });
     }
   };
 
-  const handleDeleteExpense = (expenseId) => {
-    Alert.alert(
-      'Delete Expense',
-      'Are you sure you want to delete this expense?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await StorageService.deleteExpense(expenseId);
-              await loadData();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete expense');
-            }
-          },
-        },
-      ]
-    );
+
+  const handleConfirmDelete = async () => {
+    try {
+      await StorageService.deleteExpense(deletingExpenseId);
+      await loadData();
+      setShowDeleteModal(false);
+      setDeletingExpenseId(null);
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to delete expense',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+    }
   };
 
-  const clearFilters = () => {
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setDeletingExpenseId(null);
+  };
+
+  const clearFilters = useCallback(() => {
     setSearchQuery('');
     setSelectedCategory(null);
     setSortBy('newest');
-  };
+  }, []);
 
-  const formatCurrency = (amount, currency = settings.currency || 'USD') => {
+  const formatCurrency = useCallback((amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: currency,
+      currency: settings.currency || 'USD',
     }).format(amount);
-  };
+  }, [settings.currency]);
 
-  const formatDate = (dateString) => {
+  const formatDate = useCallback((dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
     });
-  };
+  }, []);
 
-  const getCategoryName = (categoryId) => {
+  const getCategoryName = useCallback((categoryId) => {
     const category = categories.find(cat => cat.id === categoryId);
     return category ? category.name : 'Other';
-  };
+  }, [categories]);
 
-  const getCategoryColor = (categoryId) => {
+  const getCategoryColor = useCallback((categoryId) => {
     const category = categories.find(cat => cat.id === categoryId);
     return category ? category.color : '#6b7280';
-  };
+  }, [categories]);
 
-  const renderExpenseItem = ({ item }) => (
-    <Card style={styles.expenseCard}>
-      <Card.Content>
-        <View style={styles.expenseHeader}>
-          <View style={styles.expenseInfo}>
-            <Text style={styles.expenseVendor}>{item.vendor}</Text>
-            <Text style={styles.expenseDate}>{formatDate(item.date)}</Text>
-          </View>
-          <View style={styles.expenseAmountContainer}>
-            <Text style={styles.expenseAmount}>{formatCurrency(item.amount)}</Text>
-            <TouchableOpacity
-              onPress={() => handleDeleteExpense(item.id)}
-              style={styles.deleteButton}
+  const renderExpenseItem = useCallback(({ item }) => (
+    <Pressable onPress={() => handleEditExpense(item)}>
+      <Box mb="$3" bg={colors.white} borderRadius="$xl" p="$4" shadowColor={colors.black} shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.06} shadowRadius={4} elevation={2}>
+        <HStack justifyContent="space-between" alignItems="flex-start">
+          <VStack flex={1}>
+            <Text fontWeight="$semibold" fontSize="$md" color={colors.text} mb="$1">{item.vendor}</Text>
+            <Text fontSize="$sm" color={colors.textSecondary}>{formatDate(item.date)}</Text>
+            {item.description ? (
+              <Text fontSize="$xs" color={colors.textSecondary} mt="$1" numberOfLines={2}>{item.description}</Text>
+            ) : null}
+          </VStack>
+          <VStack alignItems="flex-end">
+            <Text fontWeight="$bold" fontSize="$md" color={colors.error} mb="$1">{formatCurrency(item.amount)}</Text>
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                handleDeleteExpense(item.id);
+              }}
+              p="$1"
             >
-              <Icon name="delete" size={20} color="#ef4444" />
-            </TouchableOpacity>
-          </View>
-        </View>
-        <View style={styles.categoryContainer}>
-          <Chip
-            style={[styles.categoryChip, { backgroundColor: getCategoryColor(item.category) }]}
-            textStyle={styles.categoryText}
-          >
-            {getCategoryName(item.category)}
-          </Chip>
-        </View>
-      </Card.Content>
-    </Card>
-  );
+              <Icon name="delete" size={20} color={colors.error} />
+            </Pressable>
+          </VStack>
+        </HStack>
+        <Box mt="$3">
+          <Box alignSelf="flex-start" bg={getCategoryColor(item.category)} borderRadius="$full" px="$3" py="$1">
+            <Text color={colors.white} fontSize="$xs" fontWeight="$medium">{getCategoryName(item.category)}</Text>
+          </Box>
+        </Box>
+      </Box>
+    </Pressable>
+  ), [formatCurrency, formatDate, getCategoryName, getCategoryColor, handleEditExpense, handleDeleteExpense]);
 
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <Icon name="receipt" size={64} color="#94a3b8" />
-      <Text style={styles.emptyTitle}>No expenses found</Text>
-      <Text style={styles.emptySubtitle}>
+    <VStack alignItems="center" justifyContent="center" py="$16" px="$8">
+      <Icon name="receipt" size={64} color={colors.textMuted} />
+      <Text fontWeight="$semibold" fontSize="$xl" color={colors.text} mt="$4" mb="$2">No expenses found</Text>
+      <Text fontSize="$md" color={colors.textSecondary} textAlign="center" mb="$6">
         {searchQuery || selectedCategory
           ? 'Try adjusting your filters'
           : 'Start tracking your expenses by adding your first one'}
       </Text>
       {!searchQuery && !selectedCategory && (
-        <Button
-          mode="contained"
+        <Pressable
           onPress={() => setShowAddModal(true)}
-          style={styles.addButton}
-          icon="plus"
+          bg={colors.primary}
+          borderRadius="$lg"
+          px="$6"
+          py="$3"
+          flexDirection="row"
+          alignItems="center"
         >
-          Add Your First Expense
-        </Button>
+          <Icon name="add" size={20} color={colors.white} />
+          <Text color={colors.white} fontWeight="$semibold" ml="$2">Add Your First Expense</Text>
+        </Pressable>
       )}
-    </View>
+    </VStack>
   );
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>Loading expenses...</Text>
-      </View>
+      <Box flex={1} justifyContent="center" alignItems="center" bg={colors.backgroundSecondary}>
+        <Spinner size="large" color={colors.primary} />
+        <Text mt="$3" color={colors.textSecondary}>Loading expenses...</Text>
+      </Box>
     );
   }
 
   return (
-    <View style={styles.container}>
-      {/* Search and Filters */}
-      <View style={styles.searchContainer}>
-        <Searchbar
-          placeholder="Search vendor..."
-          onChangeText={setSearchQuery}
-          value={searchQuery}
-          style={styles.searchBar}
-        />
-      </View>
+    <Box flex={1} bg={colors.backgroundSecondary} pt="$8">
+      {/* Header with Search and Recurring Button */}
+      <Box bg={colors.white} borderBottomWidth={1} borderBottomColor={colors.border}>
+        <HStack p="$4" alignItems="center" justifyContent="space-between" mb="$2">
+          <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} flex={1}>Expenses</Text>
+          <Pressable
+            onPress={() => navigation.navigate('RecurringExpenses')}
+            bg={colors.primary}
+            borderRadius="$lg"
+            px="$3"
+            py="$2"
+            flexDirection="row"
+            alignItems="center"
+          >
+            <Icon name="repeat" size={18} color={colors.white} />
+            <Text color={colors.white} fontWeight="$medium" fontSize="$sm" ml="$1">Recurring</Text>
+          </Pressable>
+        </HStack>
+        <Box px="$4" pb="$4">
+          <Input borderRadius="$lg" bg="$coolGray100" borderColor="$coolGray200">
+            <InputSlot pl="$3">
+              <Icon name="search" size={20} color={colors.textSecondary} />
+            </InputSlot>
+            <InputField
+              placeholder="Search vendor..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              fontSize="$md"
+            />
+          </Input>
+        </Box>
+      </Box>
 
       {/* Filter Options */}
-      <View style={styles.filtersContainer}>
-        <View style={styles.filterRow}>
-          <Text style={styles.filterLabel}>Sort:</Text>
-          <Chip
-            selected={sortBy === 'newest'}
-            onPress={() => setSortBy('newest')}
-            style={styles.filterChip}
-          >
-            Newest First
-          </Chip>
-          <Chip
-            selected={sortBy === 'oldest'}
-            onPress={() => setSortBy('oldest')}
-            style={styles.filterChip}
-          >
-            Oldest First
-          </Chip>
-        </View>
+      <Box bg={colors.white} px="$4" py="$4" borderBottomWidth={1} borderBottomColor={colors.border}>
+        <HStack space="md" alignItems="center" mb="$3">
+          <VStack flex={1}>
+            <Text fontSize="$xs" fontWeight="$medium" color={colors.textSecondary} mb="$1">Sort By</Text>
+            <Box borderWidth={1} borderColor={colors.border} borderRadius="$lg" bg={colors.white} overflow="hidden">
+              <Picker
+                selectedValue={sortBy}
+                onValueChange={(value) => setSortBy(value)}
+                style={{ height: 50 }}
+              >
+                <Picker.Item label="Newest First" value="newest" />
+                <Picker.Item label="Oldest First" value="oldest" />
+                <Picker.Item label="Highest Amount" value="highest" />
+                <Picker.Item label="Lowest Amount" value="lowest" />
+              </Picker>
+            </Box>
+          </VStack>
 
-        <View style={styles.filterRow}>
-          <Text style={styles.filterLabel}>Category:</Text>
-          <Chip
-            selected={!selectedCategory}
-            onPress={() => setSelectedCategory(null)}
-            style={styles.filterChip}
-          >
-            All
-          </Chip>
-          {categories.slice(0, 3).map((category) => (
-            <Chip
-              key={category.id}
-              selected={selectedCategory === category.id}
-              onPress={() => setSelectedCategory(category.id)}
-              style={styles.filterChip}
-            >
-              {category.name}
-            </Chip>
-          ))}
-        </View>
+          <VStack flex={1}>
+            <Text fontSize="$xs" fontWeight="$medium" color={colors.textSecondary} mb="$1">Category</Text>
+            <Box borderWidth={1} borderColor={colors.border} borderRadius="$lg" bg={colors.white} overflow="hidden">
+              <Picker
+                selectedValue={selectedCategory || 'all'}
+                onValueChange={(value) => setSelectedCategory(value === 'all' ? null : value)}
+                style={{ height: 50 }}
+              >
+                <Picker.Item label="All Categories" value="all" />
+                {categories.map((category) => (
+                  <Picker.Item key={category.id} label={category.name} value={category.id} />
+                ))}
+              </Picker>
+            </Box>
+          </VStack>
+        </HStack>
 
         {(searchQuery || selectedCategory || sortBy !== 'newest') && (
-          <Button
-            mode="text"
-            onPress={clearFilters}
-            style={styles.clearFiltersButton}
-            textColor="#6366f1"
-          >
-            Clear Filters
-          </Button>
+          <Pressable onPress={clearFilters} alignSelf="flex-start">
+            <Text color={colors.primary} fontSize="$sm" fontWeight="$medium">Clear Filters</Text>
+          </Pressable>
         )}
-      </View>
+      </Box>
 
       {/* Expenses List */}
       <FlatList
         data={filterAndSortExpenses}
         renderItem={renderExpenseItem}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={{ padding: 16 }}
         ListEmptyComponent={renderEmptyState}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />
+        }
       />
 
       {/* Floating Action Button */}
-      <FAB
-        icon="plus"
-        style={styles.fab}
+      <Pressable
         onPress={() => setShowAddModal(true)}
-      />
+        position="absolute"
+        right="$4"
+        bottom="$4"
+        bg={colors.primary}
+        w={56}
+        h={56}
+        borderRadius="$full"
+        alignItems="center"
+        justifyContent="center"
+        shadowColor={colors.primary}
+        shadowOffset={{ width: 0, height: 4 }}
+        shadowOpacity={0.3}
+        shadowRadius={8}
+        elevation={6}
+      >
+        <Icon name="add" size={28} color={colors.white} />
+      </Pressable>
 
-      {/* Add Expense Modal */}
-      <Portal>
-        <Modal
-          visible={showAddModal}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setShowAddModal(false)}
-        >
-          <AddExpenseModal
-            onClose={() => setShowAddModal(false)}
-            onSave={handleAddExpense}
-            categories={categories}
-          />
-        </Modal>
-      </Portal>
-    </View>
+      {/* Add/Edit Expense Modal */}
+      {showAddModal && (
+        <AddExpenseModal
+          onClose={() => {
+            setShowAddModal(false);
+            setEditingExpense(null);
+          }}
+          onSave={handleAddExpense}
+          categories={categories}
+          initialData={editingExpense}
+          receiptImageUri={editingExpense?.receiptImage}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        visible={showDeleteModal}
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        title="Delete Expense"
+        message="Are you sure you want to delete this expense? This action cannot be undone."
+      />
+    </Box>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  searchContainer: {
-    padding: 16,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  searchBar: {
-    elevation: 0,
-    backgroundColor: '#f1f5f9',
-  },
-  filtersContainer: {
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  filterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    flexWrap: 'wrap',
-  },
-  filterLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#64748b',
-    marginRight: 12,
-    minWidth: 40,
-  },
-  filterChip: {
-    marginRight: 8,
-    marginBottom: 4,
-  },
-  clearFiltersButton: {
-    alignSelf: 'flex-start',
-  },
-  listContainer: {
-    padding: 16,
-  },
-  expenseCard: {
-    marginBottom: 12,
-    backgroundColor: '#ffffff',
-  },
-  expenseHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  expenseInfo: {
-    flex: 1,
-  },
-  expenseVendor: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  expenseDate: {
-    fontSize: 14,
-    color: '#64748b',
-  },
-  expenseAmountContainer: {
-    alignItems: 'flex-end',
-  },
-  expenseAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#ef4444',
-    marginBottom: 4,
-  },
-  deleteButton: {
-    padding: 4,
-  },
-  categoryContainer: {
-    marginTop: 12,
-  },
-  categoryChip: {
-    alignSelf: 'flex-start',
-  },
-  categoryText: {
-    color: '#ffffff',
-    fontSize: 12,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 64,
-    paddingHorizontal: 32,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 16,
-    color: '#64748b',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  addButton: {
-    backgroundColor: '#6366f1',
-  },
-  fab: {
-    position: 'absolute',
-    right: 16,
-    bottom: 16,
-    backgroundColor: '#6366f1',
-  },
-});
 
 export default ExpensesScreen;

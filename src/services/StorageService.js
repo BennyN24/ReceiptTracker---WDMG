@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
+import { getDefaultPresetBudgets } from '../utils/PresetBudgets';
+import generateSecureId from '../utils/generateSecureId';
 
 const STORAGE_KEYS = {
   EXPENSES: '@receipt_tracker_expenses',
@@ -45,18 +47,8 @@ const encryptData = async (data, key) => {
 };
 
 const decryptData = async (encryptedData, key, fallbackData) => {
-  if (!key) {
-    try {
-      return JSON.parse(encryptedData);
-    } catch {
-      return fallbackData;
-    }
-  }
   try {
-    // For this implementation, we'll use a simple approach
-    // In production, consider using a proper encryption library
-    const data = await AsyncStorage.getItem(STORAGE_KEYS.EXPENSES);
-    return data ? JSON.parse(data) : fallbackData;
+    return JSON.parse(encryptedData);
   } catch (error) {
     console.warn('Decryption failed, using fallback data');
     return fallbackData;
@@ -157,7 +149,7 @@ export const StorageService = {
       const expenses = await this.getExpenses();
       const newExpense = {
         ...expense,
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        id: await generateSecureId('exp'),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -264,7 +256,7 @@ export const StorageService = {
       const budgets = await this.getBudgets();
       const newBudget = {
         ...budget,
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        id: await generateSecureId('bgt'),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -274,6 +266,33 @@ export const StorageService = {
     } catch (error) {
       console.error('Error adding budget:', error);
       throw new Error(`Failed to add budget: ${error.message}`);
+    }
+  },
+
+  async updateBudget(budgetId, updates) {
+    try {
+      if (!budgetId || typeof budgetId !== 'string') {
+        throw new Error('Budget ID is required and must be a string');
+      }
+      
+      const budgets = await this.getBudgets();
+      const budgetIndex = budgets.findIndex(budget => budget.id === budgetId);
+      
+      if (budgetIndex === -1) {
+        throw new Error('Budget not found');
+      }
+      
+      const updatedBudget = { ...budgets[budgetIndex], ...updates, updatedAt: new Date().toISOString() };
+      validateBudgetData(updatedBudget);
+      
+      const updatedBudgets = [...budgets];
+      updatedBudgets[budgetIndex] = updatedBudget;
+      
+      await this.saveBudgets(updatedBudgets);
+      return updatedBudget;
+    } catch (error) {
+      console.error('Error updating budget:', error);
+      throw new Error(`Failed to update budget: ${error.message}`);
     }
   },
 
@@ -294,6 +313,55 @@ export const StorageService = {
     } catch (error) {
       console.error('Error deleting budget:', error);
       throw new Error(`Failed to delete budget: ${error.message}`);
+    }
+  },
+
+  getDefaultPresetBudgets() {
+    return getDefaultPresetBudgets();
+  },
+
+  async addPresetBudget(categoryId) {
+    try {
+      const presets = getDefaultPresetBudgets();
+      const presetBudget = presets.find(b => b.categoryId === categoryId);
+      
+      if (!presetBudget) {
+        throw new Error('No preset budget found for this category');
+      }
+      
+      const budgets = await this.getBudgets();
+      const budgetExists = budgets.some(b => b.categoryId === categoryId);
+      
+      if (budgetExists) {
+        throw new Error('Budget already exists for this category');
+      }
+      
+      const newBudget = {
+        ...presetBudget,
+        id: await generateSecureId('bgt'),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      
+      await this.saveBudgets([...budgets, newBudget]);
+      return newBudget;
+    } catch (error) {
+      console.error('Error adding preset budget:', error);
+      throw new Error(`Failed to add preset budget: ${error.message}`);
+    }
+  },
+
+  async getAvailablePresetBudgets() {
+    try {
+      const budgets = await this.getBudgets();
+      const presets = getDefaultPresetBudgets();
+      
+      return presets.filter(preset => 
+        !budgets.some(budget => budget.categoryId === preset.categoryId)
+      );
+    } catch (error) {
+      console.error('Error getting available preset budgets:', error);
+      throw new Error(`Failed to get available preset budgets: ${error.message}`);
     }
   },
 
@@ -334,6 +402,87 @@ export const StorageService = {
     ];
   },
 
+  async addCategory(category) {
+    try {
+      if (!category.name || !category.name.trim()) {
+        throw new Error('Category name is required');
+      }
+
+      const trimmedName = category.name.trim();
+
+      // Validate name length
+      if (trimmedName.length > 50) {
+        throw new Error('Category name must be 50 characters or less');
+      }
+
+      const categories = await this.getCategories();
+
+      // Check for duplicate names (case-insensitive)
+      const duplicateExists = categories.some(
+        cat => cat.name.toLowerCase() === trimmedName.toLowerCase()
+      );
+      if (duplicateExists) {
+        throw new Error('A category with this name already exists');
+      }
+
+      // Validate color format (hex color)
+      const color = category.color || '#6366f1';
+      if (!/^#[0-9A-Fa-f]{6}$/.test(color)) {
+        throw new Error('Invalid color format. Must be hex color (e.g., #6366f1)');
+      }
+
+      // Validate icon (basic check - could be expanded)
+      const icon = category.icon || 'label';
+      if (typeof icon !== 'string' || icon.length === 0) {
+        throw new Error('Invalid icon value');
+      }
+
+      const newCategory = {
+        ...category,
+        id: await generateSecureId('cat'),
+        name: trimmedName,
+        icon,
+        color,
+      };
+
+      categories.push(newCategory);
+      await this.saveCategories(categories);
+      return newCategory;
+    } catch (error) {
+      console.error('Error adding category:', error);
+      throw new Error(`Failed to add category: ${error.message}`);
+    }
+  },
+
+  async getAllCategories() {
+    try {
+      const [categories, budgets] = await Promise.all([
+        this.getCategories(),
+        this.getBudgets(),
+      ]);
+
+      const categoryIds = new Set(categories.map(c => c.id));
+      const budgetCategories = budgets
+        .filter(b => b.categoryId && !categoryIds.has(b.categoryId))
+        .map(b => ({
+          id: b.categoryId,
+          name: b.name,
+          icon: 'label',
+          color: '#6366f1',
+        }));
+
+      // Deduplicate budget categories by id
+      const uniqueBudgetCategories = budgetCategories.filter(
+        (cat, index, self) => self.findIndex(c => c.id === cat.id) === index
+      );
+
+      return [...categories, ...uniqueBudgetCategories];
+    } catch (error) {
+      console.error('Error getting all categories:', error);
+      return this.getDefaultCategories();
+    }
+  },
+
   // Settings
   async getSettings() {
     try {
@@ -367,6 +516,9 @@ export const StorageService = {
       biometricAuth: false,
       autoBackup: false,
       passcodeLock: false,
+      autoDetectCurrency: true,
+      locationDetectionAttempted: false,
+      detectedCountryCode: '',
     };
   },
 
@@ -414,24 +566,132 @@ export const StorageService = {
       if (!data || typeof data !== 'object') {
         throw new Error('Invalid import data');
       }
-      
+
       const { expenses, budgets, categories, settings } = data;
-      
+      const importErrors = [];
+
+      // Validate and MERGE expenses individually
       if (expenses && Array.isArray(expenses)) {
-        await this.saveExpenses(expenses);
+        const validExpenses = expenses.filter((expense, index) => {
+          try {
+            validateExpenseData(expense);
+            if (typeof expense.id !== 'string' || expense.id.trim() === '') {
+              throw new Error('Missing or invalid id');
+            }
+            return true;
+          } catch (err) {
+            importErrors.push(`Expense[${index}]: ${err.message}`);
+            return false;
+          }
+        });
+        
+        // Merge with existing expenses
+        const existingExpenses = await this.getExpenses();
+        const existingMap = new Map(existingExpenses.map(e => [e.id, e]));
+        
+        validExpenses.forEach(expense => {
+          existingMap.set(expense.id, {
+            ...existingMap.get(expense.id),
+            ...expense,
+            updatedAt: new Date().toISOString(),
+          });
+        });
+        
+        await this.saveExpenses(Array.from(existingMap.values()));
       }
-      
+
+      // Validate and MERGE budgets individually
       if (budgets && Array.isArray(budgets)) {
-        await this.saveBudgets(budgets);
+        const validBudgets = budgets.filter((budget, index) => {
+          try {
+            validateBudgetData(budget);
+            if (typeof budget.id !== 'string' || budget.id.trim() === '') {
+              throw new Error('Missing or invalid id');
+            }
+            return true;
+          } catch (err) {
+            importErrors.push(`Budget[${index}]: ${err.message}`);
+            return false;
+          }
+        });
+        
+        // Merge with existing budgets
+        const existingBudgets = await this.getBudgets();
+        const existingMap = new Map(existingBudgets.map(b => [b.id, b]));
+        
+        validBudgets.forEach(budget => {
+          existingMap.set(budget.id, {
+            ...existingMap.get(budget.id),
+            ...budget,
+            updatedAt: new Date().toISOString(),
+          });
+        });
+        
+        await this.saveBudgets(Array.from(existingMap.values()));
       }
-      
+
+      // Validate and MERGE categories structure
       if (categories && Array.isArray(categories)) {
-        await this.saveCategories(categories);
+        const validCategories = categories.filter((cat, index) => {
+          if (!cat || typeof cat !== 'object') {
+            importErrors.push(`Category[${index}]: must be an object`);
+            return false;
+          }
+          if (!cat.id || typeof cat.id !== 'string') {
+            importErrors.push(`Category[${index}]: missing or invalid id`);
+            return false;
+          }
+          if (!cat.name || typeof cat.name !== 'string' || cat.name.trim() === '') {
+            importErrors.push(`Category[${index}]: missing or invalid name`);
+            return false;
+          }
+          return true;
+        });
+        
+        // Merge with existing categories
+        const existingCategories = await this.getCategories();
+        const existingMap = new Map(existingCategories.map(c => [c.id, c]));
+        
+        validCategories.forEach(category => {
+          existingMap.set(category.id, category);
+        });
+        
+        await this.saveCategories(Array.from(existingMap.values()));
       }
-      
-      if (settings && typeof settings === 'object') {
-        await this.saveSettings(settings);
+
+      // Validate and MERGE settings structure with allowed keys only
+      if (settings && typeof settings === 'object' && !Array.isArray(settings)) {
+        const allowedKeys = [
+          'monthlyBudget', 'currency', 'notifications',
+          'darkMode', 'biometricAuth', 'autoBackup', 'passcodeLock',
+          'autoDetectCurrency', 'locationDetectionAttempted', 'detectedCountryCode',
+        ];
+        
+        // Get existing settings to merge with
+        const existingSettings = await this.getSettings();
+        const sanitizedSettings = { ...existingSettings };
+        const defaults = this.getDefaultSettings();
+
+        for (const key of allowedKeys) {
+          if (key in settings) {
+            const value = settings[key];
+            const expectedType = typeof defaults[key];
+            if (typeof value === expectedType) {
+              sanitizedSettings[key] = value;
+            } else {
+              importErrors.push(`Settings.${key}: expected ${expectedType}, got ${typeof value}`);
+              // Keep existing value instead of resetting to default
+            }
+          }
+        }
+        await this.saveSettings(sanitizedSettings);
       }
+
+      if (importErrors.length > 0) {
+        console.warn('Import completed with validation warnings:', importErrors);
+      }
+
+      return { success: true, warnings: importErrors };
     } catch (error) {
       console.error('Error importing data:', error);
       throw new Error(`Failed to import data: ${error.message}`);

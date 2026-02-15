@@ -1,14 +1,19 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
+import { View } from 'react-native';
 import Icon from '@expo/vector-icons/MaterialIcons';
 
 import DashboardScreen from '../screens/DashboardScreen';
 import ExpensesScreen from '../screens/ExpensesScreen';
+import RecurringExpensesScreen from '../screens/RecurringExpensesScreen';
 import CaptureScreen from '../screens/CaptureScreen';
 import BudgetsScreen from '../screens/BudgetsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import AddExpenseModal from '../components/AddExpenseModal';
+import SplashScreen from '../screens/SplashScreen';
+import BiometricLockScreen from '../screens/BiometricLockScreen';
+import BiometricService from '../services/BiometricService';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -16,9 +21,14 @@ const Stack = createStackNavigator();
 const ExpensesStack = () => (
   <Stack.Navigator>
     <Stack.Screen 
-      name="Expenses" 
+      name="ExpensesList" 
       component={ExpensesScreen}
       options={{ headerShown: false }}
+    />
+    <Stack.Screen 
+      name="RecurringExpenses" 
+      component={RecurringExpensesScreen}
+      options={{ title: 'Recurring Expenses' }}
     />
   </Stack.Navigator>
 );
@@ -26,17 +36,18 @@ const ExpensesStack = () => (
 const BudgetsStack = () => (
   <Stack.Navigator>
     <Stack.Screen 
-      name="Budgets" 
+      name="BudgetsList" 
       component={BudgetsScreen}
       options={{ headerShown: false }}
     />
   </Stack.Navigator>
 );
 
-const AppNavigator = () => {
+const MainTabNavigator = () => {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
+        tabBarShowLabel: false,
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
 
@@ -45,7 +56,20 @@ const AppNavigator = () => {
           } else if (route.name === 'Expenses') {
             iconName = 'receipt';
           } else if (route.name === 'Capture') {
-            iconName = 'add-circle';
+            iconName = 'photo-camera';
+            return (
+              <View style={{
+                width: 80,
+                height: 80,
+                borderRadius: 40,
+                backgroundColor: '#16a34a',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginBottom: 8,
+              }}>
+                <Icon name={iconName} size={32} color="#ffffff" />
+              </View>
+            );
           } else if (route.name === 'Budgets') {
             iconName = 'account-balance-wallet';
           } else if (route.name === 'Settings') {
@@ -54,12 +78,12 @@ const AppNavigator = () => {
 
           return <Icon name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#6366f1',
+        tabBarActiveTintColor: '#16a34a',
         tabBarInactiveTintColor: '#94a3b8',
         tabBarStyle: {
           backgroundColor: '#ffffff',
           borderTopColor: '#e2e8f0',
-          height: 60,
+          height: 80,
           paddingBottom: 8,
           paddingTop: 8,
         },
@@ -77,30 +101,70 @@ const AppNavigator = () => {
       <Tab.Screen 
         name="Dashboard" 
         component={DashboardScreen}
-        options={{ title: 'Dashboard' }}
+        options={{ headerShown: false }}
       />
       <Tab.Screen 
         name="Expenses" 
         component={ExpensesStack}
-        options={{ title: 'Expenses' }}
+        options={{ headerShown: false }}
       />
       <Tab.Screen 
         name="Capture" 
         component={CaptureScreen}
-        options={{ title: 'Capture' }}
+        options={{ headerShown: false }}
       />
       <Tab.Screen 
         name="Budgets" 
         component={BudgetsStack}
-        options={{ title: 'Budgets' }}
+        options={{ headerShown: false }}
       />
       <Tab.Screen 
         name="Settings" 
         component={SettingsScreen}
-        options={{ title: 'Settings' }}
+        options={{ headerShown: false }}
       />
     </Tab.Navigator>
   );
+};
+
+const AppNavigator = () => {
+  const [isSplashVisible, setIsSplashVisible] = useState(true);
+  const [isLocked, setIsLocked] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsSplashVisible(false);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const checkBiometricLock = async () => {
+      try {
+        const enabled = await BiometricService.isBiometricEnabled();
+        setIsLocked(enabled);
+      } catch (error) {
+        console.error('Biometric check error:', error);
+        setIsLocked(false);
+      } finally {
+        setCheckingAuth(false);
+      }
+    };
+
+    checkBiometricLock();
+  }, []);
+
+  if (isSplashVisible || checkingAuth) {
+    return <SplashScreen />;
+  }
+
+  if (isLocked) {
+    return <BiometricLockScreen onAuthenticated={() => setIsLocked(false)} />;
+  }
+
+  return <MainTabNavigator />;
 };
 
 export default AppNavigator;
