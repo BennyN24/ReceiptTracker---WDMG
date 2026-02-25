@@ -103,12 +103,17 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData, receiptImag
       return;
     }
 
+    // Format date using local date parts to avoid UTC timezone shift
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+
     const expenseData = {
       vendor: vendor.trim(),
       amount: parseFloat(amount),
       description: description.trim(),
       category: selectedCategory,
-      date: date.toISOString().split('T')[0],
+      date: `${yyyy}-${mm}-${dd}`,
       isRecurring: isRecurring,
       frequency: isRecurring ? frequency : null,
     };
@@ -125,7 +130,10 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData, receiptImag
 
   const handleDateChange = (selectedDate) => {
     if (selectedDate) {
-      setDate(selectedDate);
+      // Normalise to local midnight to avoid timezone shifting
+      const d = new Date(selectedDate);
+      const normalised = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      setDate(normalised);
     }
     setShowDatePicker(false);
   };
@@ -435,11 +443,12 @@ const AddExpenseModal = ({ onClose, onSave, categories, initialData, receiptImag
           <DateTimePicker
             value={date}
             mode="date"
-            display="spinner"
+            display="default"
             onChange={(event, selectedDate) => {
               if (event.type === 'set' && selectedDate) {
                 handleDateChange(selectedDate);
-              } else if (event.type === 'dismissed') {
+              } else {
+                // 'dismissed' or Android back-button — just close the picker
                 setShowDatePicker(false);
               }
             }}
