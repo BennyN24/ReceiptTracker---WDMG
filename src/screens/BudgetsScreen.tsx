@@ -17,6 +17,9 @@ import { ProgressBar } from 'react-native-paper';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import { useFocusEffect } from '@react-navigation/native';
 import { StorageService } from '../services/StorageService';
+import AdService from '../services/AdService';
+import InterstitialAdManager from '../services/InterstitialAdManager';
+import BannerAd from '../components/BannerAd';
 import { useThemeColors } from '../hooks/useThemeColors';
 import AddBudgetModal from '../components/AddBudgetModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
@@ -130,6 +133,15 @@ const BudgetsScreen: React.FC<BudgetsScreenProps> = ({ navigation }) => {
       setShowAddModal(false);
       setEditingBudget(null);
       await loadData();
+
+      // Show ad after budget creation (wrapped to prevent ad errors from affecting core flow)
+      if (!editingBudget) {
+        try {
+          await InterstitialAdManager.showAfterBudgetCreation();
+        } catch (adError) {
+          console.error('Ad display error (non-critical):', adError);
+        }
+      }
     } catch (error) {
       Alert.alert('Error', editingBudget ? 'Failed to update budget' : 'Failed to add budget');
     }
@@ -286,6 +298,8 @@ const BudgetsScreen: React.FC<BudgetsScreenProps> = ({ navigation }) => {
             {budgets.map(renderBudgetItem)}
           </>
         )}
+        
+        <BannerAd adUnitId={AdService.getAdUnitIds().banner.budgets} />
         
         <Box h={80} />
       </ScrollView>

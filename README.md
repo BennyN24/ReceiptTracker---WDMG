@@ -39,6 +39,12 @@ A modern React Native expense tracking application built with Expo that helps yo
 - Monthly/yearly spending reports
 - Visual charts and graphs
 
+### 💰 Monetization
+- Google Mobile Ads integration
+- Non-intrusive banner ads on key screens
+- Strategic interstitial ad placements
+- Optimized for user experience
+
 ## Tech Stack
 
 - **Framework**: React Native with Expo
@@ -48,6 +54,7 @@ A modern React Native expense tracking application built with Expo that helps yo
 - **Icons**: Expo Vector Icons
 - **Forms**: React Hook Form
 - **Date Handling**: React Native Date Picker
+- **Ads**: Google Mobile Ads (react-native-google-mobile-ads)
 
 ## Installation
 

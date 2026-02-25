@@ -49,6 +49,7 @@ interface Insight {
   title: string;
   message: string;
   severity: 'info' | 'warning' | 'error';
+  icon: string;
 }
 
 type Period = 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -265,6 +266,7 @@ const AnalyticsService = {
           title: `High spending in ${highest.category}`,
           message: `You spent $${highest.amount.toFixed(2)} on ${highest.category} this period`,
           severity: 'info',
+          icon: 'trending-up',
         });
       }
 
@@ -277,6 +279,7 @@ const AnalyticsService = {
             title: `Frequent purchases at ${frequent.vendor}`,
             message: `You made ${frequent.count} purchases at ${frequent.vendor} (${frequent.average.toFixed(2)} average)`,
             severity: 'info',
+            icon: 'store',
           });
         }
       }
@@ -297,6 +300,7 @@ const AnalyticsService = {
               title: `Budget exceeded: ${budget.name}`,
               message: `You exceeded your ${budget.name} budget by $${overage.toFixed(2)}`,
               severity: 'warning',
+              icon: 'warning',
             });
           }
         });
@@ -316,6 +320,7 @@ const AnalyticsService = {
               title: 'Spending spike detected',
               message: `Your recent spending is ${((current / average - 1) * 100).toFixed(0)}% above average`,
               severity: 'warning',
+              icon: 'show-chart',
             });
           }
         }

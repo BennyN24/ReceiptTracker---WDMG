@@ -65,9 +65,9 @@ export const darkColors: ColorPalette = {
   background: '#0f172a',    // slate-900
   backgroundSecondary: '#1e293b', // slate-800
   surface: '#1e293b',       // slate-800
-  text: '#f1f5f9',          // slate-100 for maximum contrast on dark backgrounds
-  textSecondary: '#cbd5e1', // slate-300
-  textMuted: '#94a3b8',     // slate-400
+  text: '#1e293b',          // slate-100 for maximum contrast on dark backgrounds
+  textSecondary: '#979ba0ff', // slate-300
+  textMuted: '#979ba0ff',     // slate-400
   border: '#334155',        // slate-700
   borderLight: '#475569',   // slate-600
   error: '#f87171',         // red-400

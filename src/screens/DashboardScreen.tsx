@@ -22,6 +22,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { StorageService } from '../services/StorageService';
 import AnalyticsService from '../services/AnalyticsService';
 import CurrencyService from '../services/CurrencyService';
+import AdService from '../services/AdService';
+import BannerAd from '../components/BannerAd';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { ThemeContext } from '../context/ThemeContext';
 import { ProfileContext } from '../context/ProfileContext';
@@ -582,6 +584,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           </Text>
         </Box>
       )}
+
+      <BannerAd adUnitId={AdService.getAdUnitIds().banner.dashboard} />
 
     </ScrollView>
   );

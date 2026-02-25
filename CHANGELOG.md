@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Ad Integration**: Google Mobile Ads SDK integration for monetization
+  - Banner ads strategically placed on Dashboard, Expenses, Budgets, and Analytics screens
+  - Interstitial ads shown after expense creation (every 3rd expense) and budget creation (every 2nd budget)
+  - AdService for centralized ad configuration and initialization
+  - BannerAd reusable component with error handling and theme compatibility
+  - InterstitialAdManager for managing interstitial ad frequency and display logic
+  - Test ad units configured for development, ready for production ad unit IDs
+  - Non-intrusive ad placements that maintain good user experience
+  - Ads work seamlessly with light and dark themes
 - **Profile-Aware Export/Import**: Enhanced data backup and restore with multi-profile support
   - Export single profile data with profile metadata (profile name and ID included in filename)
   - Export all profiles at once with multi-profile JSON format

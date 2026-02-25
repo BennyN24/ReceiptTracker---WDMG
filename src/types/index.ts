@@ -305,6 +305,37 @@ export interface AnalyticsSummary {
   categoriesUsed: number;
 }
 
+export interface CategorySpending {
+  category: string;
+  amount: number;
+  percentage: number;
+}
+
+export interface VendorSpending {
+  vendor: string;
+  amount: number;
+  count: number;
+  average: number;
+}
+
+export interface SpendingInsight {
+  type: string;
+  title: string;
+  message: string;
+  severity: 'info' | 'warning' | 'error';
+  icon: string;
+}
+
+export interface SpendingStats {
+  total: number;
+  average: number;
+  median: number;
+  min: number;
+  max: number;
+  count: number;
+  standardDeviation: number;
+}
+
 // ─── Profile ──────────────────────────────────────────────
 
 export interface Profile {

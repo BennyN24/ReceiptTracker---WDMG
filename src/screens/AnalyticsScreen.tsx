@@ -14,6 +14,8 @@ import {
 } from '@gluestack-ui/themed';
 import { StorageService } from '../services/StorageService';
 import AnalyticsService from '../services/AnalyticsService';
+import AdService from '../services/AdService';
+import BannerAd from '../components/BannerAd';
 import { useThemeColors } from '../hooks/useThemeColors';
 import type { Expense, Budget, AppSettings, CategorySpending, VendorSpending, SpendingInsight, SpendingStats } from '../types';
 import type { ColorPalette } from '../styles/theme';
@@ -301,6 +303,8 @@ const AnalyticsScreen: React.FC = () => {
           <Text color={colors.primary} fontWeight="$semibold" fontSize="$md">Export as CSV</Text>
         </Pressable>
       </Box>
+
+      <BannerAd adUnitId={AdService.getAdUnitIds().banner.analytics} />
 
       <Box h={20} />
     </ScrollView>

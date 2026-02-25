@@ -50,6 +50,13 @@
         {
           "locationWhenInUsePermission": "ReceiptTracker uses your location to automatically set your local currency."
         }
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3678553543792849~7475670185",
+          "iosAppId": "ca-app-pub-3678553543792849~7475670185"
+        }
       ]
     ],
     "extra": {

@@ -25,6 +25,9 @@ import { StorageService } from '../services/StorageService';
 import RecurringExpenseService from '../services/RecurringExpenseService';
 import NotificationService from '../services/NotificationService';
 import CurrencyService from '../services/CurrencyService';
+import AdService from '../services/AdService';
+import InterstitialAdManager from '../services/InterstitialAdManager';
+import BannerAd from '../components/BannerAd';
 import { useThemeColors } from '../hooks/useThemeColors';
 import type { Expense, Category, AppSettings, RecurringExpense } from '../types';
 import type { ColorPalette } from '../styles/theme';
@@ -143,9 +146,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigation }) => {
           category: expenseData.category,
           frequency: expenseData.frequency,
           startDate: expenseData.date,
-          // @ts-ignore - notes field might not be in Partial<RecurringExpense> but we use it here
           notes: expenseData.description,
-          receiptImage: editingExpense?.receiptImage || null,
         };
         await RecurringExpenseService.createRecurringExpense(recurringData as Omit<RecurringExpense, 'id' | 'nextDueDate'>);
       } else {
@@ -158,6 +159,15 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigation }) => {
       await loadData();
       setShowAddModal(false);
       setEditingExpense(null);
+
+      // Show ad after expense creation (wrapped to prevent ad errors from affecting core flow)
+      if (!editingExpense) {
+        try {
+          await InterstitialAdManager.showAfterExpenseCreation();
+        } catch (adError) {
+          console.error('Ad display error (non-critical):', adError);
+        }
+      }
 
       // Check budget and send notification if threshold exceeded
       if (!editingExpense && !expenseData.isRecurring && settings.notifications) {
@@ -181,8 +191,7 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigation }) => {
             await NotificationService.sendBudgetAlert(
               `Monthly Budget (${currencySymbol}${budget.toFixed(2)})`,
               percentage,
-              remaining,
-              currentSettings.currency || 'USD'
+              remaining
             );
           }
         } catch (notifError) {
@@ -400,6 +409,8 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigation }) => {
           </Pressable>
         )}
       </Box>
+
+      <BannerAd adUnitId={AdService.getAdUnitIds().banner.expenses} />
 
       {/* Expenses List */}
       <FlatList

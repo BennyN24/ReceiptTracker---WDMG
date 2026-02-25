@@ -11,6 +11,8 @@ import NotificationService from './src/services/NotificationService';
 import RecurringExpenseService from './src/services/RecurringExpenseService';
 import { StorageService } from './src/services/StorageService';
 import LocationService from './src/services/LocationService';
+import AdService from './src/services/AdService';
+import InterstitialAdManager from './src/services/InterstitialAdManager';
 import type { AppSettings } from './src/types';
 
 function AppContent() {
@@ -86,12 +88,26 @@ function AppContent() {
       }
     };
 
-    // Run both initialization tasks in parallel
+    const initAds = async () => {
+      try {
+        await AdService.initialize();
+        if (!isMounted) return;
+        await InterstitialAdManager.initialize();
+        if (!isMounted) return;
+        await InterstitialAdManager.loadInterstitialAd();
+      } catch (error) {
+        if (isMounted) {
+          console.error('Ad initialization error:', error);
+        }
+      }
+    };
+
     (async () => {
       try {
         await Promise.all([
           initNotifications(),
           initLocationCurrency(),
+          initAds(),
         ]);
       } catch (error) {
         if (isMounted) {
@@ -103,6 +119,7 @@ function AppContent() {
     // Cleanup function to prevent state updates on unmounted component
     return () => {
       isMounted = false;
+      InterstitialAdManager.dispose();
     };
   }, []);
 
