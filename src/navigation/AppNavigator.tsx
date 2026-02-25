@@ -12,16 +12,17 @@ import BudgetsScreen from '../screens/BudgetsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import SplashScreen from '../screens/SplashScreen';
 import BiometricLockScreen from '../screens/BiometricLockScreen';
+import ProfileManagementScreen from '../screens/ProfileManagementScreen';
 import BiometricService from '../services/BiometricService';
-import type { MainTabParamList, ExpensesStackParamList, BudgetsStackParamList } from '../types';
+import type { MainTabParamList, ExpensesStackParamList, BudgetsStackParamList, RootStackParamList } from '../types';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
-const Stack = createStackNavigator();
+const RootStack = createStackNavigator<RootStackParamList>();
 const ExpensesStackObj = createStackNavigator<ExpensesStackParamList>();
 const BudgetsStackObj = createStackNavigator<BudgetsStackParamList>();
 
 const ExpensesStack = () => (
-  <ExpensesStackObj.Navigator>
+  <ExpensesStackObj.Navigator id="expenses-stack">
     <ExpensesStackObj.Screen 
       name="ExpensesList" 
       component={ExpensesScreen}
@@ -36,7 +37,7 @@ const ExpensesStack = () => (
 );
 
 const BudgetsStack = () => (
-  <BudgetsStackObj.Navigator>
+  <BudgetsStackObj.Navigator id="budgets-stack">
     <BudgetsStackObj.Screen 
       name="BudgetsList" 
       component={BudgetsScreen}
@@ -48,6 +49,7 @@ const BudgetsStack = () => (
 const MainTabNavigator = () => {
   return (
     <Tab.Navigator
+      id="main-tabs"
       screenOptions={({ route }) => ({
         tabBarShowLabel: false,
         tabBarIcon: ({ color, size }) => {
@@ -166,7 +168,16 @@ const AppNavigator: React.FC = () => {
     return <BiometricLockScreen onAuthenticated={() => setIsLocked(false)} />;
   }
 
-  return <MainTabNavigator />;
+  return (
+    <RootStack.Navigator id="root-stack" screenOptions={{ headerShown: false }}>
+      <RootStack.Screen name="MainTabs" component={MainTabNavigator} />
+      <RootStack.Screen 
+        name="ProfileManagement" 
+        component={ProfileManagementScreen}
+        options={{ headerShown: false }}
+      />
+    </RootStack.Navigator>
+  );
 };
 
 export default AppNavigator;

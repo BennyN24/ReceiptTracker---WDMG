@@ -221,6 +221,7 @@ export type RootStackParamList = {
   RecurringExpenses: undefined;
   SecuritySettings: undefined;
   CurrencySettings: undefined;
+  ProfileManagement: undefined;
 };
 
 export type MainTabParamList = {
@@ -292,4 +293,27 @@ export interface AnalyticsSummary {
   averagePerDay: number;
   transactionCount: number;
   categoriesUsed: number;
+}
+
+// ─── Profile ──────────────────────────────────────────────
+
+export interface Profile {
+  id: string;
+  name: string;
+  avatar?: string;
+  color: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProfileData {
+  name: string;
+  avatar?: string;
+  color: string;
+}
+
+export interface ProfileStats {
+  totalExpenses: number;
+  totalSpent: number;
+  budgetUsed: number;
 }

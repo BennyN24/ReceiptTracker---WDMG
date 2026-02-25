@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
-import { getDefaultPresetBudgets } from '../utils/PresetBudgets';
+import getDefaultPresetBudgets from '../utils/PresetBudgets';
 import generateSecureId from '../utils/generateSecureId';
+import { ProfileService } from './ProfileService';
 import type {
   Expense,
   Budget,
@@ -15,7 +16,7 @@ import type {
 
 // ─── Storage Keys ────────────────────────────────────────
 
-const STORAGE_KEYS = {
+const BASE_STORAGE_KEYS = {
   EXPENSES: '@receipt_tracker_expenses',
   BUDGETS: '@receipt_tracker_budgets',
   CATEGORIES: '@receipt_tracker_categories',
@@ -23,11 +24,16 @@ const STORAGE_KEYS = {
   ENCRYPTION_KEY: '@receipt_tracker_encryption_key',
 } as const;
 
+const getStorageKey = async (baseKey: string): Promise<string> => {
+  const profileId = await ProfileService.getActiveProfileId();
+  return `${baseKey}_${profileId}`;
+};
+
 // ─── Encryption Utilities ────────────────────────────────
 
 const generateEncryptionKey = async (): Promise<string | null> => {
   try {
-    const existingKey = await SecureStore.getItemAsync(STORAGE_KEYS.ENCRYPTION_KEY);
+    const existingKey = await SecureStore.getItemAsync(BASE_STORAGE_KEYS.ENCRYPTION_KEY);
     if (existingKey) return existingKey;
 
     const key = await Crypto.digestStringAsync(
@@ -35,7 +41,7 @@ const generateEncryptionKey = async (): Promise<string | null> => {
       Math.random().toString(36) + Date.now().toString()
     );
 
-    await SecureStore.setItemAsync(STORAGE_KEYS.ENCRYPTION_KEY, key);
+    await SecureStore.setItemAsync(BASE_STORAGE_KEYS.ENCRYPTION_KEY, key);
     return key;
   } catch (error) {
     console.warn('Failed to generate encryption key, falling back to plain text');
@@ -134,7 +140,8 @@ export const StorageService = {
 
   async getExpenses(): Promise<Expense[]> {
     try {
-      const expenses = await AsyncStorage.getItem(STORAGE_KEYS.EXPENSES);
+      const key = await getStorageKey(BASE_STORAGE_KEYS.EXPENSES);
+      const expenses = await AsyncStorage.getItem(key);
       if (!expenses) return [];
 
       const parsedExpenses: Expense[] = JSON.parse(expenses);
@@ -167,7 +174,8 @@ export const StorageService = {
       // Validate all expenses before saving
       expenses.forEach(validateExpenseData);
 
-      await AsyncStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
+      const key = await getStorageKey(BASE_STORAGE_KEYS.EXPENSES);
+      await AsyncStorage.setItem(key, JSON.stringify(expenses));
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       console.error('Error saving expenses:', error);
@@ -253,7 +261,8 @@ export const StorageService = {
 
   async getBudgets(): Promise<Budget[]> {
     try {
-      const budgets = await AsyncStorage.getItem(STORAGE_KEYS.BUDGETS);
+      const key = await getStorageKey(BASE_STORAGE_KEYS.BUDGETS);
+      const budgets = await AsyncStorage.getItem(key);
       if (!budgets) return [];
 
       const parsedBudgets: Budget[] = JSON.parse(budgets);
@@ -284,7 +293,8 @@ export const StorageService = {
       }
 
       budgets.forEach(validateBudgetData);
-      await AsyncStorage.setItem(STORAGE_KEYS.BUDGETS, JSON.stringify(budgets));
+      const key = await getStorageKey(BASE_STORAGE_KEYS.BUDGETS);
+      await AsyncStorage.setItem(key, JSON.stringify(budgets));
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       console.error('Error saving budgets:', error);
@@ -421,7 +431,8 @@ export const StorageService = {
 
   async getCategories(): Promise<Category[]> {
     try {
-      const categories = await AsyncStorage.getItem(STORAGE_KEYS.CATEGORIES);
+      const key = await getStorageKey(BASE_STORAGE_KEYS.CATEGORIES);
+      const categories = await AsyncStorage.getItem(key);
       return categories ? JSON.parse(categories) : this.getDefaultCategories();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
@@ -436,7 +447,8 @@ export const StorageService = {
         throw new Error('Categories must be an array');
       }
 
-      await AsyncStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
+      const key = await getStorageKey(BASE_STORAGE_KEYS.CATEGORIES);
+      await AsyncStorage.setItem(key, JSON.stringify(categories));
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       console.error('Error saving categories:', error);
@@ -543,7 +555,8 @@ export const StorageService = {
 
   async getSettings(): Promise<AppSettings> {
     try {
-      const settings = await AsyncStorage.getItem(STORAGE_KEYS.SETTINGS);
+      const key = await getStorageKey(BASE_STORAGE_KEYS.SETTINGS);
+      const settings = await AsyncStorage.getItem(key);
       return settings ? JSON.parse(settings) : this.getDefaultSettings();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
@@ -558,7 +571,8 @@ export const StorageService = {
         throw new Error('Settings must be an object');
       }
 
-      await AsyncStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+      const key = await getStorageKey(BASE_STORAGE_KEYS.SETTINGS);
+      await AsyncStorage.setItem(key, JSON.stringify(settings));
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       console.error('Error saving settings:', error);
@@ -585,12 +599,13 @@ export const StorageService = {
 
   async clearAllData(): Promise<void> {
     try {
+      const profileId = await ProfileService.getActiveProfileId();
       await Promise.all([
-        AsyncStorage.removeItem(STORAGE_KEYS.EXPENSES),
-        AsyncStorage.removeItem(STORAGE_KEYS.BUDGETS),
-        AsyncStorage.removeItem(STORAGE_KEYS.CATEGORIES),
-        AsyncStorage.removeItem(STORAGE_KEYS.SETTINGS),
-        SecureStore.deleteItemAsync(STORAGE_KEYS.ENCRYPTION_KEY),
+        AsyncStorage.removeItem(`${BASE_STORAGE_KEYS.EXPENSES}_${profileId}`),
+        AsyncStorage.removeItem(`${BASE_STORAGE_KEYS.BUDGETS}_${profileId}`),
+        AsyncStorage.removeItem(`${BASE_STORAGE_KEYS.CATEGORIES}_${profileId}`),
+        AsyncStorage.removeItem(`${BASE_STORAGE_KEYS.SETTINGS}_${profileId}`),
+        SecureStore.deleteItemAsync(BASE_STORAGE_KEYS.ENCRYPTION_KEY),
       ]);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
@@ -654,10 +669,9 @@ export const StorageService = {
 
         validExpenses.forEach((expense) => {
           existingMap.set(expense.id, {
-            ...existingMap.get(expense.id),
             ...expense,
             updatedAt: new Date().toISOString(),
-          } as Expense);
+          });
         });
 
         await this.saveExpenses(Array.from(existingMap.values()));
@@ -685,10 +699,9 @@ export const StorageService = {
 
         validBudgets.forEach((budget) => {
           existingMap.set(budget.id, {
-            ...existingMap.get(budget.id),
             ...budget,
             updatedAt: new Date().toISOString(),
-          } as Budget);
+          });
         });
 
         await this.saveBudgets(Array.from(existingMap.values()));

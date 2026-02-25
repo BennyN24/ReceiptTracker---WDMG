@@ -5,6 +5,7 @@ import { GluestackUIProvider } from '@gluestack-ui/themed';
 import Toast from 'react-native-toast-message';
 import AppNavigator from './src/navigation/AppNavigator';
 import { ThemeProvider, ThemeContext } from './src/context/ThemeContext';
+import { ProfileProvider } from './src/context/ProfileContext';
 import { getTheme, gluestackThemeConfig } from './src/styles/theme';
 import NotificationService from './src/services/NotificationService';
 import RecurringExpenseService from './src/services/RecurringExpenseService';
@@ -41,10 +42,7 @@ function AppContent() {
             if (!isMounted) return;
             
             if (dueExpenses.length > 0) {
-              const names = dueExpenses.map(e => e.vendor).join(', ');
-              await NotificationService.sendExpenseReminder(
-                `You have ${dueExpenses.length} recurring expense(s) due today: ${names}`
-              );
+              await NotificationService.sendExpenseReminder();
             }
           }
         }
@@ -123,8 +121,10 @@ function AppContent() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AppContent />
-      <Toast />
+      <ProfileProvider>
+        <AppContent />
+        <Toast />
+      </ProfileProvider>
     </ThemeProvider>
   );
 }

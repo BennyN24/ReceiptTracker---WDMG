@@ -24,6 +24,7 @@ import AnalyticsService from '../services/AnalyticsService';
 import CurrencyService from '../services/CurrencyService';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { ThemeContext } from '../context/ThemeContext';
+import { ProfileContext } from '../context/ProfileContext';
 import type { ColorPalette } from '../styles/theme';
 import type { Expense, Budget, Category, AppSettings } from '../types';
 
@@ -52,6 +53,7 @@ interface DashboardScreenProps {
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const colors: ColorPalette = useThemeColors();
   const { isDarkMode } = useContext(ThemeContext);
+  const { activeProfile } = useContext(ProfileContext);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -302,8 +304,30 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     >
       {/* Header */}
       <Box px="$5" pt="$16" pb="$4">
-        <Heading size="2xl" color={isDarkMode ? '#ffffff' : colors.text} mb="$2">Track Expenses</Heading>
-        <Text color={colors.textSecondary} fontSize="$md">Welcome back, your finances are on track.</Text>
+        <HStack justifyContent="space-between" alignItems="flex-start" mb="$2">
+          <VStack flex={1}>
+            <Heading size="2xl" color={isDarkMode ? '#ffffff' : colors.text} mb="$2">Track Expenses</Heading>
+            <Text color={colors.textSecondary} fontSize="$md">Welcome back, your finances are on track.</Text>
+          </VStack>
+          <Pressable
+            onPress={() => navigation.navigate('ProfileManagement')}
+            bg={activeProfile?.color || colors.primary}
+            borderRadius="$full"
+            w={48}
+            h={48}
+            alignItems="center"
+            justifyContent="center"
+            shadowColor={colors.black}
+            shadowOffset={{ width: 0, height: 2 }}
+            shadowOpacity={0.1}
+            shadowRadius={4}
+            elevation={3}
+          >
+            <Text color={colors.white} fontWeight="$bold" fontSize="$xl">
+              {activeProfile?.name.charAt(0).toUpperCase() || 'P'}
+            </Text>
+          </Pressable>
+        </HStack>
       </Box>
 
       {/* Budget Overview Card */}
