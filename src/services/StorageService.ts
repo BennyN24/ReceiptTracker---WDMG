@@ -582,7 +582,7 @@ export const StorageService = {
 
   getDefaultSettings(): AppSettings {
     return {
-      monthlyBudget: 1550,
+      monthlyBudget: 10000,
       currency: 'USD',
       notifications: true,
       darkMode: false,

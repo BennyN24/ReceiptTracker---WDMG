@@ -1,26 +1,30 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { StorageService } from './StorageService';
+import { ProfileService } from './ProfileService';
 import RecurringExpenseService from './RecurringExpenseService';
-import type { ExportResult, ExportData, Expense, Category } from '../types';
+import type { ExportResult, ExportData, MultiProfileExportData, Expense, Category, Profile } from '../types';
 
 const ExportService = {
   /**
-   * Export all app data as a JSON file and open the share sheet.
+   * Export current profile data as a JSON file and open the share sheet.
    */
   async exportAsJSON(): Promise<ExportResult> {
     try {
-      const [baseExport, recurringExpenses] = await Promise.all([
+      const [baseExport, recurringExpenses, activeProfile] = await Promise.all([
         StorageService.exportData(),
         RecurringExpenseService.getRecurringExpenses(),
+        ProfileService.getActiveProfile(),
       ]);
 
-      const exportData = {
+      const exportData: ExportData = {
         ...baseExport,
         recurringExpenses,
+        profileId: activeProfile.id,
+        profileName: activeProfile.name,
       };
 
-      const fileName = `ReceiptTracker_Backup_${this._formatDateForFilename()}.json`;
+      const fileName = `ReceiptTracker_${activeProfile.name}_${this._formatDateForFilename()}.json`;
       const filePath = `${FileSystem.cacheDirectory}${fileName}`;
 
       await FileSystem.writeAsStringAsync(filePath, JSON.stringify(exportData, null, 2), {
@@ -38,30 +42,88 @@ const ExportService = {
   },
 
   /**
-   * Export JSON with option to save using file picker or share.
+   * Export ALL profiles and their data as a JSON file.
+   */
+  async exportAllProfilesAsJSON(): Promise<ExportResult> {
+    try {
+      const [profiles, activeProfileId] = await Promise.all([
+        ProfileService.getProfiles(),
+        ProfileService.getActiveProfileId(),
+      ]);
+
+      const profileData: Record<string, ExportData> = {};
+
+      for (const profile of profiles) {
+        await ProfileService.setActiveProfile(profile.id);
+        ProfileService.clearActiveProfileCache();
+
+        const [baseExport, recurringExpenses] = await Promise.all([
+          StorageService.exportData(),
+          RecurringExpenseService.getRecurringExpenses(),
+        ]);
+
+        profileData[profile.id] = {
+          ...baseExport,
+          recurringExpenses,
+          profileId: profile.id,
+          profileName: profile.name,
+        };
+      }
+
+      await ProfileService.setActiveProfile(activeProfileId);
+      ProfileService.clearActiveProfileCache();
+
+      const multiProfileExport: MultiProfileExportData = {
+        profiles,
+        activeProfileId,
+        profileData,
+        exportDate: new Date().toISOString(),
+        appVersion: '1.0.0',
+      };
+
+      const fileName = `ReceiptTracker_AllProfiles_${this._formatDateForFilename()}.json`;
+      const filePath = `${FileSystem.cacheDirectory}${fileName}`;
+
+      await FileSystem.writeAsStringAsync(filePath, JSON.stringify(multiProfileExport, null, 2), {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      await this._shareFile(filePath, 'application/json');
+
+      return { success: true, format: 'json', filePath };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Multi-profile JSON export error:', error);
+      throw new Error(`Failed to export all profiles: ${message}`);
+    }
+  },
+
+  /**
+   * Export current profile JSON with option to save using file picker or share.
    */
   async exportAsJSONToDownloads(): Promise<ExportResult> {
     try {
-      const [baseExport, recurringExpenses] = await Promise.all([
+      const [baseExport, recurringExpenses, activeProfile] = await Promise.all([
         StorageService.exportData(),
         RecurringExpenseService.getRecurringExpenses(),
+        ProfileService.getActiveProfile(),
       ]);
 
-      const exportData = {
+      const exportData: ExportData = {
         ...baseExport,
         recurringExpenses,
+        profileId: activeProfile.id,
+        profileName: activeProfile.name,
       };
 
-      const fileName = `ReceiptTracker_Backup_${this._formatDateForFilename()}.json`;
+      const fileName = `ReceiptTracker_${activeProfile.name}_${this._formatDateForFilename()}.json`;
       const content = JSON.stringify(exportData, null, 2);
 
-      // Save to cache first
       const filePath = `${FileSystem.cacheDirectory}${fileName}`;
       await FileSystem.writeAsStringAsync(filePath, content, {
         encoding: FileSystem.EncodingType.UTF8,
       });
 
-      // Use share sheet which allows saving to Downloads, Drive, etc.
       await this._shareFile(filePath, 'application/json');
 
       return { success: true, format: 'json', fileName };
@@ -73,13 +135,14 @@ const ExportService = {
   },
 
   /**
-   * Export expenses as a CSV file and open the share sheet.
+   * Export current profile expenses as a CSV file and open the share sheet.
    */
   async exportAsCSV(): Promise<ExportResult> {
     try {
-      const [expenses, categories] = await Promise.all([
+      const [expenses, categories, activeProfile] = await Promise.all([
         StorageService.getExpenses(),
         StorageService.getCategories(),
+        ProfileService.getActiveProfile(),
       ]);
 
       const categoryMap: Record<string, string> = {};
@@ -87,7 +150,7 @@ const ExportService = {
         categoryMap[cat.id] = cat.name;
       });
 
-      const headers = ['Date', 'Vendor', 'Amount', 'Category', 'Description', 'Created At'];
+      const headers = ['Date', 'Vendor', 'Amount', 'Category', 'Description', 'Created At', 'Profile'];
       const rows = expenses
         .sort((a: Expense, b: Expense) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .map((expense: Expense) => [
@@ -97,11 +160,12 @@ const ExportService = {
           this._escapeCSV(categoryMap[expense.category] || expense.category),
           this._escapeCSV(expense.description || expense.notes || ''),
           expense.createdAt || '',
+          this._escapeCSV(activeProfile.name),
         ]);
 
       const csvContent = [headers.join(','), ...rows.map((row: string[]) => row.join(','))].join('\n');
 
-      const fileName = `ReceiptTracker_Expenses_${this._formatDateForFilename()}.csv`;
+      const fileName = `ReceiptTracker_${activeProfile.name}_Expenses_${this._formatDateForFilename()}.csv`;
       const filePath = `${FileSystem.cacheDirectory}${fileName}`;
 
       await FileSystem.writeAsStringAsync(filePath, csvContent, {
@@ -119,13 +183,14 @@ const ExportService = {
   },
 
   /**
-   * Export CSV with option to save using file picker or share.
+   * Export current profile CSV with option to save using file picker or share.
    */
   async exportAsCSVToDownloads(): Promise<ExportResult> {
     try {
-      const [expenses, categories] = await Promise.all([
+      const [expenses, categories, activeProfile] = await Promise.all([
         StorageService.getExpenses(),
         StorageService.getCategories(),
+        ProfileService.getActiveProfile(),
       ]);
 
       const categoryMap: Record<string, string> = {};
@@ -133,7 +198,7 @@ const ExportService = {
         categoryMap[cat.id] = cat.name;
       });
 
-      const headers = ['Date', 'Vendor', 'Amount', 'Category', 'Description', 'Created At'];
+      const headers = ['Date', 'Vendor', 'Amount', 'Category', 'Description', 'Created At', 'Profile'];
       const rows = expenses
         .sort((a: Expense, b: Expense) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .map((expense: Expense) => [
@@ -143,18 +208,18 @@ const ExportService = {
           this._escapeCSV(categoryMap[expense.category] || expense.category),
           this._escapeCSV(expense.description || expense.notes || ''),
           expense.createdAt || '',
+          this._escapeCSV(activeProfile.name),
         ]);
 
       const csvContent = [headers.join(','), ...rows.map((row: string[]) => row.join(','))].join('\n');
 
-      const fileName = `ReceiptTracker_Expenses_${this._formatDateForFilename()}.csv`;
+      const fileName = `ReceiptTracker_${activeProfile.name}_Expenses_${this._formatDateForFilename()}.csv`;
       const filePath = `${FileSystem.cacheDirectory}${fileName}`;
 
       await FileSystem.writeAsStringAsync(filePath, csvContent, {
         encoding: FileSystem.EncodingType.UTF8,
       });
 
-      // Use share sheet which allows saving to Downloads, Drive, etc.
       await this._shareFile(filePath, 'text/csv');
 
       return { success: true, format: 'csv', fileName };

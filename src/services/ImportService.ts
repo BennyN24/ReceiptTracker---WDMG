@@ -1,9 +1,11 @@
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import { Alert } from 'react-native';
 import { StorageService } from './StorageService';
+import { ProfileService } from './ProfileService';
 import RecurringExpenseService from './RecurringExpenseService';
 import generateSecureId from '../utils/generateSecureId';
-import type { Expense, ImportResult, Category } from '../types';
+import type { Expense, ImportResult, Category, ExportData, MultiProfileExportData, Profile } from '../types';
 
 const ImportService = {
   /**
@@ -53,7 +55,7 @@ const ImportService = {
   },
 
   /**
-   * Import data from a JSON file
+   * Import data from a JSON file (handles single profile, multi-profile, or legacy formats)
    */
   async _importJSON(fileUri: string): Promise<ImportResult> {
     try {
@@ -63,28 +65,23 @@ const ImportService = {
 
       const data = JSON.parse(fileContent);
 
-      // Check if it's a full backup or just expenses
+      // Check if it's a multi-profile export
+      if (data.profiles && data.profileData && data.activeProfileId) {
+        return await this._importMultiProfileData(data as MultiProfileExportData);
+      }
+
+      // Check if it's a single profile export with metadata
+      if ((data.expenses || data.budgets || data.categories || data.settings) && data.profileId) {
+        return await this._importSingleProfileData(data as ExportData);
+      }
+
+      // Legacy format without profile metadata
       if (data.expenses || data.budgets || data.categories || data.settings) {
-        // Full backup format
-        const importResult = await StorageService.importData(data);
+        return await this._importLegacyData(data);
+      }
 
-        // Import recurring expenses if present
-        if (data.recurringExpenses && Array.isArray(data.recurringExpenses)) {
-          try {
-            await RecurringExpenseService.importRecurringExpenses(data.recurringExpenses);
-          } catch (error) {
-            console.warn('Failed to import recurring expenses:', error);
-          }
-        }
-
-        return {
-          success: true,
-          format: 'json',
-          warnings: importResult.warnings || [],
-          message: 'Data imported successfully',
-        };
-      } else if (Array.isArray(data)) {
-        // Array of expenses
+      // Array of expenses (legacy)
+      if (Array.isArray(data)) {
         const validExpenses = this._validateExpensesArray(data);
         const existingExpenses = await StorageService.getExpenses();
         const mergedExpenses = this._mergeExpenses(existingExpenses, validExpenses);
@@ -94,15 +91,153 @@ const ImportService = {
           success: true,
           format: 'json',
           warnings: [],
-          message: `Imported ${validExpenses.length} expenses`,
+          message: `Imported ${validExpenses.length} expenses into current profile`,
         };
-      } else {
-        throw new Error('Invalid JSON format. Expected full backup or array of expenses.');
       }
+
+      throw new Error('Invalid JSON format. Expected profile backup or array of expenses.');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       console.error('JSON import error:', error);
       throw new Error(`Failed to import JSON: ${message}`);
+    }
+  },
+
+  /**
+   * Import multi-profile data
+   */
+  async _importMultiProfileData(data: MultiProfileExportData): Promise<ImportResult> {
+    try {
+      const currentProfile = await ProfileService.getActiveProfile();
+      const warnings: string[] = [];
+      let totalImported = 0;
+
+      // Import or update profiles
+      const existingProfiles = await ProfileService.getProfiles();
+      const profileMap = new Map(existingProfiles.map(p => [p.id, p]));
+
+      for (const profile of data.profiles) {
+        if (!profileMap.has(profile.id)) {
+          // Create new profile
+          await ProfileService.saveProfiles([...existingProfiles, profile]);
+          warnings.push(`Created new profile: ${profile.name}`);
+        }
+      }
+
+      // Import data for each profile
+      for (const [profileId, profileData] of Object.entries(data.profileData)) {
+        await ProfileService.setActiveProfile(profileId);
+        ProfileService.clearActiveProfileCache();
+
+        const importResult = await StorageService.importData(profileData);
+        
+        if (profileData.recurringExpenses && Array.isArray(profileData.recurringExpenses)) {
+          try {
+            await RecurringExpenseService.importRecurringExpenses(profileData.recurringExpenses);
+          } catch (error) {
+            warnings.push(`Failed to import recurring expenses for profile ${profileData.profileName}`);
+          }
+        }
+
+        if (importResult.warnings) {
+          warnings.push(...importResult.warnings);
+        }
+        totalImported++;
+      }
+
+      // Restore original active profile
+      await ProfileService.setActiveProfile(currentProfile.id);
+      ProfileService.clearActiveProfileCache();
+
+      return {
+        success: true,
+        format: 'json',
+        warnings,
+        message: `Imported data for ${totalImported} profiles`,
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Multi-profile import error:', error);
+      throw new Error(`Failed to import multi-profile data: ${message}`);
+    }
+  },
+
+  /**
+   * Import single profile data with profile metadata
+   */
+  async _importSingleProfileData(data: ExportData): Promise<ImportResult> {
+    try {
+      const currentProfile = await ProfileService.getActiveProfile();
+      const warnings: string[] = [];
+
+      // Warn if importing from different profile
+      if (data.profileId && data.profileId !== currentProfile.id) {
+        warnings.push(
+          `Importing data from profile "${data.profileName || 'Unknown'}" into current profile "${currentProfile.name}"`
+        );
+      }
+
+      const importResult = await StorageService.importData(data);
+
+      if (data.recurringExpenses && Array.isArray(data.recurringExpenses)) {
+        try {
+          await RecurringExpenseService.importRecurringExpenses(data.recurringExpenses);
+        } catch (error) {
+          warnings.push('Failed to import recurring expenses');
+        }
+      }
+
+      if (importResult.warnings) {
+        warnings.push(...importResult.warnings);
+      }
+
+      return {
+        success: true,
+        format: 'json',
+        warnings,
+        message: `Data imported into profile "${currentProfile.name}"`,
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Single profile import error:', error);
+      throw new Error(`Failed to import profile data: ${message}`);
+    }
+  },
+
+  /**
+   * Import legacy data without profile metadata
+   */
+  async _importLegacyData(data: Partial<ExportData>): Promise<ImportResult> {
+    try {
+      const currentProfile = await ProfileService.getActiveProfile();
+      const warnings: string[] = [
+        'Importing legacy data format (no profile information). Data will be merged into current profile.',
+      ];
+
+      const importResult = await StorageService.importData(data);
+
+      if (data.recurringExpenses && Array.isArray(data.recurringExpenses)) {
+        try {
+          await RecurringExpenseService.importRecurringExpenses(data.recurringExpenses);
+        } catch (error) {
+          warnings.push('Failed to import recurring expenses');
+        }
+      }
+
+      if (importResult.warnings) {
+        warnings.push(...importResult.warnings);
+      }
+
+      return {
+        success: true,
+        format: 'json',
+        warnings,
+        message: `Legacy data imported into profile "${currentProfile.name}"`,
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Legacy import error:', error);
+      throw new Error(`Failed to import legacy data: ${message}`);
     }
   },
 

@@ -70,34 +70,44 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
   const createProfile = useCallback(async (name: string, color: string, avatar?: string) => {
     try {
       const newProfile = await ProfileService.createProfile({ name, color, avatar });
-      await refreshProfiles();
+      // Optimized: Add to existing profiles instead of refetching
+      setProfiles(prev => [...prev, newProfile]);
       return newProfile;
     } catch (error) {
       console.error('Error creating profile:', error);
       throw error;
     }
-  }, [refreshProfiles]);
+  }, []);
 
   const updateProfile = useCallback(async (profileId: string, updates: { name?: string; color?: string; avatar?: string }) => {
     try {
       const updatedProfile = await ProfileService.updateProfile(profileId, updates);
-      await refreshProfiles();
+      // Optimized: Update specific profile instead of refetching all
+      setProfiles(prev => prev.map(p => p.id === profileId ? updatedProfile : p));
+      if (activeProfile?.id === profileId) {
+        setActiveProfile(updatedProfile);
+      }
       return updatedProfile;
     } catch (error) {
       console.error('Error updating profile:', error);
       throw error;
     }
-  }, [refreshProfiles]);
+  }, [activeProfile]);
 
   const deleteProfile = useCallback(async (profileId: string) => {
     try {
       await ProfileService.deleteProfile(profileId);
-      await refreshProfiles();
+      // Optimized: Remove from state and update active if needed
+      setProfiles(prev => prev.filter(p => p.id !== profileId));
+      if (activeProfile?.id === profileId) {
+        const newActive = await ProfileService.getActiveProfile();
+        setActiveProfile(newActive);
+      }
     } catch (error) {
       console.error('Error deleting profile:', error);
       throw error;
     }
-  }, [refreshProfiles]);
+  }, [activeProfile]);
 
   return (
     <ProfileContext.Provider

@@ -12,6 +12,27 @@ const DEFAULT_PROFILE_COLORS = [
   '#10b981', '#06b6d4', '#ef4444', '#f97316', '#6366f1',
 ];
 
+// Cache for active profile ID to prevent repeated AsyncStorage calls
+let activeProfileIdCache: string | null = null;
+let cacheTimestamp: number = 0;
+const CACHE_TTL = 5000; // 5 seconds TTL
+
+// Validation helpers
+const validateProfileName = (name: string): void => {
+  if (!name || name.trim() === '') {
+    throw new Error('Profile name is required');
+  }
+};
+
+const checkDuplicateName = (profiles: Profile[], name: string, excludeId?: string): void => {
+  const duplicateExists = profiles.some(
+    (p) => p.id !== excludeId && p.name.toLowerCase() === name.trim().toLowerCase()
+  );
+  if (duplicateExists) {
+    throw new Error('A profile with this name already exists');
+  }
+};
+
 export const ProfileService = {
   async getProfiles(): Promise<Profile[]> {
     try {
@@ -51,6 +72,12 @@ export const ProfileService = {
 
   async getActiveProfileId(): Promise<string> {
     try {
+      // Return cached value if still valid
+      const now = Date.now();
+      if (activeProfileIdCache && (now - cacheTimestamp) < CACHE_TTL) {
+        return activeProfileIdCache;
+      }
+
       const activeId = await AsyncStorage.getItem(STORAGE_KEYS.ACTIVE_PROFILE);
       if (!activeId) {
         const profiles = await this.getProfiles();
@@ -58,6 +85,10 @@ export const ProfileService = {
         await this.setActiveProfile(defaultId);
         return defaultId;
       }
+      
+      // Update cache
+      activeProfileIdCache = activeId;
+      cacheTimestamp = now;
       return activeId;
     } catch (error) {
       console.error('Error getting active profile:', error);
@@ -65,9 +96,17 @@ export const ProfileService = {
     }
   },
 
+  clearActiveProfileCache(): void {
+    activeProfileIdCache = null;
+    cacheTimestamp = 0;
+  },
+
   async setActiveProfile(profileId: string): Promise<void> {
     try {
       await AsyncStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE, profileId);
+      // Update cache immediately
+      activeProfileIdCache = profileId;
+      cacheTimestamp = Date.now();
     } catch (error) {
       console.error('Error setting active profile:', error);
       throw new Error('Failed to set active profile');
@@ -93,18 +132,9 @@ export const ProfileService = {
 
   async createProfile(data: ProfileData): Promise<Profile> {
     try {
-      if (!data.name || data.name.trim() === '') {
-        throw new Error('Profile name is required');
-      }
-
+      validateProfileName(data.name);
       const profiles = await this.getProfiles();
-      
-      const duplicateExists = profiles.some(
-        (p) => p.name.toLowerCase() === data.name.trim().toLowerCase()
-      );
-      if (duplicateExists) {
-        throw new Error('A profile with this name already exists');
-      }
+      checkDuplicateName(profiles, data.name);
 
       const newProfile: Profile = {
         id: await generateSecureId(),
@@ -134,12 +164,8 @@ export const ProfileService = {
       }
 
       if (updates.name) {
-        const duplicateExists = profiles.some(
-          (p) => p.id !== profileId && p.name.toLowerCase() === updates.name!.trim().toLowerCase()
-        );
-        if (duplicateExists) {
-          throw new Error('A profile with this name already exists');
-        }
+        validateProfileName(updates.name);
+        checkDuplicateName(profiles, updates.name, profileId);
       }
 
       const updatedProfile: Profile = {

@@ -31,6 +31,7 @@ import NotificationService from '../services/NotificationService';
 import BiometricService from '../services/BiometricService';
 import { getColors } from '../styles/theme';
 import { ThemeContext } from '../context/ThemeContext';
+import { ProfileContext } from '../context/ProfileContext';
 import type { ColorPalette } from '../styles/theme';
 import type { AppSettings, CurrencyInfo } from '../types';
 
@@ -40,6 +41,7 @@ interface SettingsScreenProps {
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { isDarkMode, toggleDarkMode } = useContext(ThemeContext);
+  const { activeProfile, profiles } = useContext(ProfileContext);
   const colors: ColorPalette = getColors(isDarkMode);
   const [settings, setSettings] = useState<AppSettings>({});
   const [loading, setLoading] = useState<boolean>(true);
@@ -199,9 +201,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   };
 
   const handleImportData = async (): Promise<void> => {
+    const profileName = activeProfile?.name || 'Current';
     Alert.alert(
       'Import Data',
-      'Select a file to import. Supported formats: JSON (full backup) or CSV (expenses only).\n\nNote: Importing will merge with your existing data, not replace it.',
+      `Select a file to import into "${profileName}" profile. Supported formats: JSON (full backup) or CSV (expenses only).\n\nNote: Data will be merged with existing data in the current profile. Multi-profile backups will restore all profiles.`,
       [
         {
           text: 'Choose File',
@@ -253,24 +256,39 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   };
 
   const handleExportData = async (): Promise<void> => {
+    const profileName = activeProfile?.name || 'Current';
+    const hasMultipleProfiles = profiles.length > 1;
+
+    const options: any[] = [
+      {
+        text: `JSON - ${profileName} Profile`,
+        onPress: () => performExport('json', false),
+      },
+      {
+        text: `CSV - ${profileName} Profile`,
+        onPress: () => performExport('csv', false),
+      },
+    ];
+
+    if (hasMultipleProfiles) {
+      options.unshift({
+        text: `JSON - All ${profiles.length} Profiles`,
+        onPress: () => performExport('json', true),
+      });
+    }
+
+    options.push({ text: 'Cancel', style: 'cancel' });
+
     Alert.alert(
       'Export Data',
-      'Choose format. You can then save to Downloads, Google Drive, or share via any app.',
-      [
-        {
-          text: 'JSON (Full Backup)',
-          onPress: () => performExport('json'),
-        },
-        {
-          text: 'CSV (Expenses Only)',
-          onPress: () => performExport('csv'),
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ]
+      hasMultipleProfiles
+        ? `Export current profile "${profileName}" or all profiles. You can save to Downloads, Google Drive, or share via any app.`
+        : `Export "${profileName}" profile data. You can save to Downloads, Google Drive, or share via any app.`,
+      options
     );
   };
 
-  const performExport = async (format: 'json' | 'csv'): Promise<void> => {
+  const performExport = async (format: 'json' | 'csv', allProfiles: boolean = false): Promise<void> => {
     setExporting(true);
     try {
       const isAvailable = await ExportService.isSharingAvailable();
@@ -280,15 +298,20 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       }
 
       if (format === 'json') {
-        await ExportService.exportAsJSON();
+        if (allProfiles) {
+          await ExportService.exportAllProfilesAsJSON();
+        } else {
+          await ExportService.exportAsJSON();
+        }
       } else {
         await ExportService.exportAsCSV();
       }
       
+      const profileInfo = allProfiles ? `all ${profiles.length} profiles` : `"${activeProfile?.name}" profile`;
       Toast.show({
         type: 'success',
         text1: 'Export Ready',
-        text2: 'Choose where to save your file (Downloads, Drive, etc.)',
+        text2: `Exported ${profileInfo}. Choose where to save your file.`,
         position: 'top',
         visibilityTime: 3000,
       });
@@ -574,7 +597,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                   {importing ? 'Importing...' : 'Import Data'}
                 </Text>
                 <Text fontSize="$sm" color={colors.textSecondary}>
-                  Restore from JSON, CSV, or Excel file
+                  Restore to "{activeProfile?.name || 'Current'}" profile
                 </Text>
               </VStack>
             </HStack>
@@ -597,7 +620,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                   {exporting ? 'Exporting...' : 'Export Data'}
                 </Text>
                 <Text fontSize="$sm" color={colors.textSecondary}>
-                  Download all your expenses and budgets
+                  {profiles.length > 1 
+                    ? `Export "${activeProfile?.name}" or all ${profiles.length} profiles`
+                    : `Export "${activeProfile?.name}" profile data`
+                  }
                 </Text>
               </VStack>
             </HStack>
@@ -720,12 +746,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
         
         <HStack justifyContent="space-between" alignItems="center" py="$2">
           <Text fontSize="$md" color={colors.textSecondary}>App Version</Text>
-          <Text fontSize="$md" color={colors.text} fontWeight="$medium">1.0.0</Text>
+          <Text fontSize="$md" color={colors.text} fontWeight="$medium">{require('../../package.json').version}</Text>
         </HStack>
 
         <HStack justifyContent="space-between" alignItems="center" py="$2">
           <Text fontSize="$md" color={colors.textSecondary}>Developer</Text>
-          <Text fontSize="$md" color={colors.text} fontWeight="$medium">Receipt Tracker - Benny N.</Text>
+          <Text fontSize="$md" color={colors.text} fontWeight="$medium">Receipt Tracker by Benny N.</Text>
         </HStack>
       </Box>
 

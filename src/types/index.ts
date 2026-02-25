@@ -187,6 +187,16 @@ export interface ExportData {
   recurringExpenses?: RecurringExpense[];
   exportDate: string;
   appVersion: string;
+  profileId?: string;
+  profileName?: string;
+}
+
+export interface MultiProfileExportData {
+  profiles: Profile[];
+  activeProfileId: string;
+  profileData: Record<string, ExportData>;
+  exportDate: string;
+  appVersion: string;
 }
 
 export interface ImportResult {

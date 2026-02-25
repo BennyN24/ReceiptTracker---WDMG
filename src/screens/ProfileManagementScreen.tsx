@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useMemo, memo } from 'react';
 import {
   ScrollView,
   Alert,
@@ -54,22 +54,29 @@ const ProfileManagementScreen: React.FC<ProfileManagementScreenProps> = ({ navig
 
   const availableColors = ProfileService.getDefaultProfileColors();
 
-  useEffect(() => {
-    loadProfileStats();
-  }, [profiles]);
-
-  const loadProfileStats = async () => {
+  const loadProfileStats = useCallback(async () => {
     try {
+      // Parallel loading instead of sequential
+      const statsPromises = profiles.map(profile => 
+        ProfileService.getProfileStats(profile.id)
+          .then(stats => ({ profileId: profile.id, stats }))
+      );
+      
+      const results = await Promise.all(statsPromises);
       const statsMap = new Map<string, ProfileStats>();
-      for (const profile of profiles) {
-        const stats = await ProfileService.getProfileStats(profile.id);
-        statsMap.set(profile.id, stats);
-      }
+      results.forEach(({ profileId, stats }) => {
+        statsMap.set(profileId, stats);
+      });
+      
       setProfileStats(statsMap);
     } catch (error) {
       console.error('Error loading profile stats:', error);
     }
-  };
+  }, [profiles]);
+
+  useEffect(() => {
+    loadProfileStats();
+  }, [loadProfileStats]);
 
   const handleSwitchProfile = async (profileId: string) => {
     try {
@@ -240,12 +247,16 @@ const ProfileManagementScreen: React.FC<ProfileManagementScreenProps> = ({ navig
     setShowEditModal(true);
   };
 
-  const formatCurrency = (amount: number): string => {
+  const formatCurrency = useCallback((amount: number): string => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
     }).format(amount);
-  };
+  }, []);
+
+  const handleSwitchProfileMemoized = useCallback(handleSwitchProfile, [switchProfile, navigation]);
+  const handleDeleteProfileMemoized = useCallback(handleDeleteProfile, [deleteProfile]);
+  const openEditModalMemoized = useCallback(openEditModal, []);
 
   return (
     <Box flex={1} bg={colors.backgroundSecondary}>
@@ -280,85 +291,19 @@ const ProfileManagementScreen: React.FC<ProfileManagementScreenProps> = ({ navig
         </Box>
 
         <VStack px="$5" space="md">
-          {profiles.map((profile) => {
-            const stats = profileStats.get(profile.id);
-            const isActive = activeProfile?.id === profile.id;
-
-            return (
-              <Pressable
-                key={profile.id}
-                onPress={() => !isActive && handleSwitchProfile(profile.id)}
-                bg={colors.white}
-                borderRadius="$xl"
-                p="$4"
-                borderWidth={isActive ? 2 : 0}
-                borderColor={isActive ? colors.primary : 'transparent'}
-                shadowColor={colors.black}
-                shadowOffset={{ width: 0, height: 2 }}
-                shadowOpacity={0.08}
-                shadowRadius={8}
-                elevation={3}
-              >
-                <HStack justifyContent="space-between" alignItems="center">
-                  <HStack alignItems="center" flex={1}>
-                    <Box
-                      w={48}
-                      h={48}
-                      borderRadius="$full"
-                      bg={profile.color}
-                      alignItems="center"
-                      justifyContent="center"
-                      mr="$3"
-                    >
-                      <Text color={colors.white} fontWeight="$bold" fontSize="$xl">
-                        {profile.name.charAt(0).toUpperCase()}
-                      </Text>
-                    </Box>
-                    <VStack flex={1}>
-                      <HStack alignItems="center" space="xs">
-                        <Text fontWeight="$semibold" fontSize="$lg" color={colors.text}>
-                          {profile.name}
-                        </Text>
-                        {isActive && (
-                          <Box bg={colors.primary} borderRadius="$md" px="$2" py="$0.5">
-                            <Text color={colors.white} fontSize="$xs" fontWeight="$semibold">
-                              Active
-                            </Text>
-                          </Box>
-                        )}
-                      </HStack>
-                      {stats && (
-                        <Text fontSize="$sm" color={colors.textSecondary} mt="$1">
-                          {stats.totalExpenses} expenses • {formatCurrency(stats.totalSpent)} spent
-                        </Text>
-                      )}
-                    </VStack>
-                  </HStack>
-
-                  <HStack space="xs">
-                    <Pressable
-                      onPress={() => openEditModal(profile)}
-                      bg={colors.backgroundSecondary}
-                      borderRadius="$lg"
-                      p="$2"
-                    >
-                      <Icon name="edit" size={20} color={colors.primary} />
-                    </Pressable>
-                    {profile.id !== 'default' && (
-                      <Pressable
-                        onPress={() => handleDeleteProfile(profile)}
-                        bg={colors.errorLight}
-                        borderRadius="$lg"
-                        p="$2"
-                      >
-                        <Icon name="delete" size={20} color={colors.error} />
-                      </Pressable>
-                    )}
-                  </HStack>
-                </HStack>
-              </Pressable>
-            );
-          })}
+          {profiles.map((profile) => (
+            <ProfileCard
+              key={profile.id}
+              profile={profile}
+              stats={profileStats.get(profile.id)}
+              isActive={activeProfile?.id === profile.id}
+              colors={colors}
+              onSwitch={handleSwitchProfileMemoized}
+              onEdit={openEditModalMemoized}
+              onDelete={handleDeleteProfileMemoized}
+              formatCurrency={formatCurrency}
+            />
+          ))}
         </VStack>
       </ScrollView>
 
@@ -524,5 +469,101 @@ const ProfileManagementScreen: React.FC<ProfileManagementScreenProps> = ({ navig
     </Box>
   );
 };
+
+interface ProfileCardProps {
+  profile: Profile;
+  stats: ProfileStats | undefined;
+  isActive: boolean;
+  colors: ColorPalette;
+  onSwitch: (profileId: string) => void;
+  onEdit: (profile: Profile) => void;
+  onDelete: (profile: Profile) => void;
+  formatCurrency: (amount: number) => string;
+}
+
+const ProfileCard = memo<ProfileCardProps>(({ 
+  profile, 
+  stats, 
+  isActive, 
+  colors, 
+  onSwitch, 
+  onEdit, 
+  onDelete,
+  formatCurrency 
+}) => (
+  <Pressable
+    onPress={() => !isActive && onSwitch(profile.id)}
+    bg={colors.white}
+    borderRadius="$xl"
+    p="$4"
+    borderWidth={isActive ? 2 : 0}
+    borderColor={isActive ? colors.primary : 'transparent'}
+    shadowColor={colors.black}
+    shadowOffset={{ width: 0, height: 2 }}
+    shadowOpacity={0.08}
+    shadowRadius={8}
+    elevation={3}
+  >
+    <HStack justifyContent="space-between" alignItems="center">
+      <HStack alignItems="center" flex={1}>
+        <Box
+          w={48}
+          h={48}
+          borderRadius="$full"
+          bg={profile.color}
+          alignItems="center"
+          justifyContent="center"
+          mr="$3"
+        >
+          <Text color={colors.white} fontWeight="$bold" fontSize="$xl">
+            {profile.name.charAt(0).toUpperCase()}
+          </Text>
+        </Box>
+        <VStack flex={1}>
+          <HStack alignItems="center" space="xs">
+            <Text fontWeight="$semibold" fontSize="$lg" color={colors.text}>
+              {profile.name}
+            </Text>
+            {isActive && (
+              <Box bg={colors.primary} borderRadius="$md" px="$2" py="$0.5">
+                <Text color={colors.white} fontSize="$xs" fontWeight="$semibold">
+                  Active
+                </Text>
+              </Box>
+            )}
+          </HStack>
+          {stats && (
+            <Text fontSize="$sm" color={colors.textSecondary} mt="$1">
+              {stats.totalExpenses} expenses • {formatCurrency(stats.totalSpent)} spent
+            </Text>
+          )}
+        </VStack>
+      </HStack>
+
+      <HStack space="xs">
+        <Pressable
+          onPress={() => onEdit(profile)}
+          bg={colors.backgroundSecondary}
+          borderRadius="$lg"
+          p="$2"
+        >
+          <Icon name="edit" size={20} color={colors.primary} />
+        </Pressable>
+        {profile.id !== 'default' && (
+          <Pressable
+            onPress={() => onDelete(profile)}
+            bg={colors.errorLight}
+            borderRadius="$lg"
+            p="$2"
+          >
+            <Icon name="delete" size={20} color={colors.error} />
+          </Pressable>
+        )}
+      </HStack>
+    </HStack>
+  </Pressable>
+));
+
+ProfileCard.displayName = 'ProfileCard';
 
 export default ProfileManagementScreen;
