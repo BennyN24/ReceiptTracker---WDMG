@@ -10,7 +10,7 @@ const NotificationService = {
     return false;
   },
 
-  async sendBudgetAlert(budgetName: string, percentage: number, amount: number): Promise<void> {
+  async sendBudgetAlert(budgetName: string, percentage: number, amount: number, currencySymbol: string = '$'): Promise<void> {
     console.log(`Budget alert (web stub): ${budgetName} - ${percentage}%`);
   },
 

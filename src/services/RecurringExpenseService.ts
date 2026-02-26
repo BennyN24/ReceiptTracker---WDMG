@@ -190,8 +190,8 @@ const RecurringExpenseService = {
       const existingExpenses = await storageService.getExpenses();
       const todayRecurringIds = new Set(
         existingExpenses
-          .filter((e: Expense & { recurringId?: string }) => e.date === today && (e as Expense & { recurringId?: string }).recurringId)
-          .map((e: Expense & { recurringId?: string }) => (e as Expense & { recurringId?: string }).recurringId)
+          .filter((e: Expense) => e.date === today && e.recurringId)
+          .map((e: Expense) => e.recurringId)
       );
 
       for (const recurring of dueExpenses) {

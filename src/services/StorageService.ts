@@ -4,6 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 import getDefaultPresetBudgets from '../utils/PresetBudgets';
 import generateSecureId from '../utils/generateSecureId';
 import { ProfileService } from './ProfileService';
+import { APP_VERSION } from '../config/version';
 import type {
   Expense,
   Budget,
@@ -629,7 +630,7 @@ export const StorageService = {
         categories,
         settings,
         exportDate: new Date().toISOString(),
-        appVersion: '1.0.0',
+        appVersion: APP_VERSION,
       };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
