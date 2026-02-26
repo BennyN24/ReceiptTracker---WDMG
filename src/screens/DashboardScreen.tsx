@@ -63,6 +63,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('monthly');
+  const [showTipsBanner, setShowTipsBanner] = useState<boolean>(true);
 
   useEffect(() => {
     loadData();
@@ -412,6 +413,28 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           ))
         )}
       </Box>
+
+      {/* Tips Banner */}
+      {showTipsBanner && (
+        <Box mx="$5" mb="$5" bg="#EFF6FF" borderRadius="$xl" p="$4" borderWidth={1} borderColor="#BFDBFE">
+          <HStack space="sm" alignItems="flex-start">
+            <Box mt="$0.5">
+              <Icon name="lightbulb" size={20} color="#F59E0B" />
+            </Box>
+            <VStack flex={1}>
+              <Text fontWeight="$semibold" fontSize="$sm" color="#1E40AF" mb="$1">
+                Receipt Capture Tips
+              </Text>
+              <Text fontSize="$xs" color="#1E3A8A" lineHeight="$sm">
+                Internet connection is required to use the Capture Receipt feature. Alternatively, you can take a photo of your receipt first, then use Upload Receipt when you have internet access.
+              </Text>
+            </VStack>
+            <Pressable onPress={() => setShowTipsBanner(false)} hitSlop={8}>
+              <Icon name="close" size={18} color="#64748B" />
+            </Pressable>
+          </HStack>
+        </Box>
+      )}
 
       {/* Quick Actions */}
       <HStack px="$5" pb="$5" space="md">
