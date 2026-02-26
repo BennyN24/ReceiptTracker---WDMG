@@ -191,7 +191,8 @@ const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ navigation }) => {
             await NotificationService.sendBudgetAlert(
               `Monthly Budget (${currencySymbol}${budget.toFixed(2)})`,
               percentage,
-              remaining
+              remaining,
+              currencySymbol
             );
           }
         } catch (notifError) {

@@ -39,12 +39,12 @@ const NotificationService = {
   /**
    * Send a budget alert notification.
    */
-  async sendBudgetAlert(budgetName: string, percentage: number, amount: number): Promise<void> {
+  async sendBudgetAlert(budgetName: string, percentage: number, amount: number, currencySymbol: string = '$'): Promise<void> {
     try {
       const title = percentage >= 100 ? '🚨 Budget Exceeded!' : '⚠️ Budget Warning';
       const body = percentage >= 100
         ? `You've exceeded your ${budgetName} budget!`
-        : `You've used ${percentage.toFixed(0)}% of your ${budgetName} budget ($${amount.toFixed(2)} remaining)`;
+        : `You've used ${percentage.toFixed(0)}% of your ${budgetName} budget (${currencySymbol}${amount.toFixed(2)} remaining)`;
 
       await Notifications.scheduleNotificationAsync({
         content: { title, body },
@@ -101,6 +101,7 @@ const NotificationService = {
           type: Notifications.SchedulableTriggerInputTypes.DAILY,
           hour,
           minute,
+          repeats: true,
         },
       });
     } catch (error) {
@@ -130,6 +131,7 @@ const NotificationService = {
           weekday,
           hour,
           minute,
+          repeats: true,
         },
       });
     } catch (error) {
