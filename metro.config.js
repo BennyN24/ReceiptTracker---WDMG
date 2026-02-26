@@ -2,7 +2,17 @@ const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
 
-config.resolver.sourceExts = ['web.tsx', 'web.ts', 'web.jsx', 'web.js', 'native.tsx', 'native.ts', 'native.jsx', 'native.js', 'tsx', 'ts', 'jsx', 'js', 'json', 'cjs', 'mjs'];
-config.resolver.assetExts = ['glb', 'gltf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ttf', 'otf', 'woff', 'woff2'];
+const defaultConfig = getDefaultConfig(__dirname);
+const customSourceExts = ['ts', 'tsx', 'cjs', 'mjs'];
+const customAssetExts = ['glb', 'gltf', 'ttf', 'otf', 'woff', 'woff2'];
+
+config.resolver.sourceExts = [
+  ...defaultConfig.resolver.sourceExts.filter(ext => !ext.includes('.')),
+  ...customSourceExts
+];
+config.resolver.assetExts = [
+  ...defaultConfig.resolver.assetExts,
+  ...customAssetExts
+];
 
 module.exports = config;

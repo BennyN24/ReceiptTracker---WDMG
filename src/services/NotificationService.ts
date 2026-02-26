@@ -111,7 +111,7 @@ const NotificationService = {
   /**
    * Schedule a weekly review notification.
    */
-  async scheduleWeeklyReview(weekday: number = 2, hour: number = 10, minute: number = 0): Promise<void> {
+  async scheduleWeeklyReview(weekday: number = 3, hour: number = 10, minute: number = 0): Promise<void> {
     try {
       try {
         await Notifications.cancelScheduledNotificationAsync('weekly_review');
