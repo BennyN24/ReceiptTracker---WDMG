@@ -85,7 +85,11 @@ const NotificationService = {
    */
   async scheduleDailySummary(hour: number = 20, minute: number = 0): Promise<void> {
     try {
-      await Notifications.cancelScheduledNotificationAsync('daily_summary');
+      try {
+        await Notifications.cancelScheduledNotificationAsync('daily_summary');
+      } catch (cancelError) {
+        console.warn('Failed to cancel existing daily summary notification:', cancelError);
+      }
 
       await Notifications.scheduleNotificationAsync({
         identifier: 'daily_summary',
@@ -109,7 +113,11 @@ const NotificationService = {
    */
   async scheduleWeeklyReview(weekday: number = 2, hour: number = 10, minute: number = 0): Promise<void> {
     try {
-      await Notifications.cancelScheduledNotificationAsync('weekly_review');
+      try {
+        await Notifications.cancelScheduledNotificationAsync('weekly_review');
+      } catch (cancelError) {
+        console.warn('Failed to cancel existing weekly review notification:', cancelError);
+      }
 
       await Notifications.scheduleNotificationAsync({
         identifier: 'weekly_review',
@@ -170,8 +178,9 @@ const NotificationService = {
   async _saveToHistory(notification: { title: string; body: string; type?: string }): Promise<void> {
     try {
       const history = await this.getHistory();
+      const randomSuffix = Math.random().toString(36).substring(2, 11) + Math.random().toString(36).substring(2, 11);
       const newEntry: NotificationHistoryItem = {
-        id: `${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+        id: `${Date.now()}_${randomSuffix}`,
         title: notification.title,
         body: notification.body,
         timestamp: new Date().toISOString(),

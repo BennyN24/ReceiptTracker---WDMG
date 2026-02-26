@@ -19,9 +19,9 @@ class InterstitialAdManager {
     if (this.isLoading || this.isLoaded) return;
 
     this.isLoading = true;
+    this.cleanup();
 
     try {
-      this.cleanup();
 
       const adUnitId = AdService.getAdUnitIds().interstitial;
       
