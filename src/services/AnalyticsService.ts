@@ -72,11 +72,13 @@ const AnalyticsService = {
         categoryMap[expense.category] += expense.amount;
       });
 
+      const total = Object.values(categoryMap).reduce((sum, amount) => sum + amount, 0);
+
       return Object.entries(categoryMap)
         .map(([category, amount]) => ({
           category,
           amount,
-          percentage: 0, // Will be calculated after
+          percentage: total === 0 ? 0 : parseFloat(((amount / total) * 100).toFixed(2)),
         }))
         .sort((a, b) => b.amount - a.amount);
     } catch (error) {

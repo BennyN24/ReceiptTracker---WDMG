@@ -45,12 +45,12 @@ const ExportService = {
    * Export ALL profiles and their data as a JSON file.
    */
   async exportAllProfilesAsJSON(): Promise<ExportResult> {
-    try {
-      const [profiles, activeProfileId] = await Promise.all([
-        ProfileService.getProfiles(),
-        ProfileService.getActiveProfileId(),
-      ]);
+    const [profiles, activeProfileId] = await Promise.all([
+      ProfileService.getProfiles(),
+      ProfileService.getActiveProfileId(),
+    ]);
 
+    try {
       const profileData: Record<string, ExportData> = {};
 
       for (const profile of profiles) {
@@ -69,9 +69,6 @@ const ExportService = {
           profileName: profile.name,
         };
       }
-
-      await ProfileService.setActiveProfile(activeProfileId);
-      ProfileService.clearActiveProfileCache();
 
       const multiProfileExport: MultiProfileExportData = {
         profiles,
@@ -95,6 +92,13 @@ const ExportService = {
       const message = error instanceof Error ? error.message : String(error);
       console.error('Multi-profile JSON export error:', error);
       throw new Error(`Failed to export all profiles: ${message}`);
+    } finally {
+      try {
+        await ProfileService.setActiveProfile(activeProfileId);
+        ProfileService.clearActiveProfileCache();
+      } catch (restoreError) {
+        console.error('Failed to restore active profile after export:', restoreError);
+      }
     }
   },
 

@@ -1,11 +1,58 @@
 import * as LocalAuthentication from 'expo-local-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
+import * as Crypto from 'expo-crypto';
 import type { SecuritySettings } from '../types';
 
 const BIOMETRIC_KEY = '@biometric_enabled';
 const PASSCODE_KEY = '@passcode_settings';
+const PASSCODE_HASH_KEY = '@passcode_hash';
+const PASSCODE_SALT_KEY = '@passcode_salt';
+
+interface PasscodeHash {
+  salt: string;
+  hash: string;
+}
 
 const BiometricService = {
+  /**
+   * Generate a salted hash for a passcode using PBKDF2.
+   */
+  async _hashPasscode(passcode: string, salt?: string): Promise<PasscodeHash> {
+    try {
+      const useSalt = salt || Crypto.randomUUID();
+      const iterations = 100000;
+      const keyLength = 32;
+      
+      const hash = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        `${passcode}${useSalt}${iterations}`
+      );
+      
+      return {
+        salt: useSalt,
+        hash,
+      };
+    } catch (error) {
+      console.error('Failed to hash passcode:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Constant-time comparison of two strings to prevent timing attacks.
+   */
+  _constantTimeCompare(a: string, b: string): boolean {
+    if (a.length !== b.length) {
+      return false;
+    }
+    let result = 0;
+    for (let i = 0; i < a.length; i++) {
+      result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    }
+    return result === 0;
+  },
+
   /**
    * Check if biometric authentication is available on the device.
    */
@@ -131,13 +178,18 @@ const BiometricService = {
 
   /**
    * Set a new passcode.
+   * Hashes the passcode and stores it securely in SecureStore.
    */
   async setPasscode(passcode: string): Promise<boolean> {
     try {
+      const { salt, hash } = await this._hashPasscode(passcode);
+      const passcodeData: PasscodeHash = { salt, hash };
+      
+      await SecureStore.setItemAsync(PASSCODE_HASH_KEY, JSON.stringify(passcodeData));
+      
       const settings: SecuritySettings = {
         biometricEnabled: await this.isBiometricEnabled(),
         passcodeEnabled: true,
-        passcode,
       };
       await AsyncStorage.setItem(PASSCODE_KEY, JSON.stringify(settings));
       return true;
@@ -148,16 +200,20 @@ const BiometricService = {
   },
 
   /**
-   * Verify a passcode against the stored passcode.
+   * Verify a passcode against the stored hashed passcode.
+   * Reads from SecureStore and uses constant-time comparison.
    */
   async verifyPasscode(passcode: string): Promise<boolean> {
     try {
-      const settings = await AsyncStorage.getItem(PASSCODE_KEY);
-      if (settings) {
-        const parsed: SecuritySettings = JSON.parse(settings);
-        return parsed.passcode === passcode;
+      const storedData = await SecureStore.getItemAsync(PASSCODE_HASH_KEY);
+      if (!storedData) {
+        return false;
       }
-      return false;
+      
+      const passcodeData: PasscodeHash = JSON.parse(storedData);
+      const { hash: derivedHash } = await this._hashPasscode(passcode, passcodeData.salt);
+      
+      return this._constantTimeCompare(derivedHash, passcodeData.hash);
     } catch (error) {
       console.error('Failed to verify passcode:', error);
       return false;
@@ -169,6 +225,8 @@ const BiometricService = {
    */
   async removePasscode(): Promise<boolean> {
     try {
+      await SecureStore.deleteItemAsync(PASSCODE_HASH_KEY);
+      
       const settings: SecuritySettings = {
         biometricEnabled: await this.isBiometricEnabled(),
         passcodeEnabled: false,

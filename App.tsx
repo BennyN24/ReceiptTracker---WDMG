@@ -16,10 +16,7 @@ import InterstitialAdManager from './src/services/InterstitialAdManager';
 import type { AppSettings } from './src/types';
 
 function AppContent() {
-  const themeContext = useContext(ThemeContext);
-  if (!themeContext) return null;
-
-  const { isDarkMode } = themeContext;
+  const { isDarkMode } = useContext(ThemeContext);
   const currentTheme = getTheme(isDarkMode);
 
   useEffect(() => {

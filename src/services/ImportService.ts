@@ -113,15 +113,22 @@ const ImportService = {
       let totalImported = 0;
 
       // Import or update profiles
-      const existingProfiles = await ProfileService.getProfiles();
+      let existingProfiles = await ProfileService.getProfiles();
       const profileMap = new Map(existingProfiles.map(p => [p.id, p]));
+      const newProfiles: Profile[] = [];
 
       for (const profile of data.profiles) {
         if (!profileMap.has(profile.id)) {
-          // Create new profile
-          await ProfileService.saveProfiles([...existingProfiles, profile]);
+          // Collect new profiles
+          newProfiles.push(profile);
           warnings.push(`Created new profile: ${profile.name}`);
         }
+      }
+
+      // Save all new profiles at once
+      if (newProfiles.length > 0) {
+        existingProfiles = [...existingProfiles, ...newProfiles];
+        await ProfileService.saveProfiles(existingProfiles);
       }
 
       // Import data for each profile
