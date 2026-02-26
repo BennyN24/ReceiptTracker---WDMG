@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Ad Integration**: Google Mobile Ads SDK integration for monetization
+  - Banner ads strategically placed on Dashboard, Expenses, Budgets, and Analytics screens
+  - Interstitial ads shown after expense creation (every 3rd expense) and budget creation (every 2nd budget)
+  - AdService for centralized ad configuration and initialization
+  - BannerAd reusable component with error handling and theme compatibility
+  - InterstitialAdManager for managing interstitial ad frequency and display logic
+  - Test ad units configured for development, ready for production ad unit IDs
+  - Non-intrusive ad placements that maintain good user experience
+  - Ads work seamlessly with light and dark themes
+- **Profile-Aware Export/Import**: Enhanced data backup and restore with multi-profile support
+  - Export single profile data with profile metadata (profile name and ID included in filename)
+  - Export all profiles at once with multi-profile JSON format
+  - Import automatically detects format: single profile, multi-profile, or legacy
+  - Profile context displayed in Settings screen export/import UI
+  - CSV exports now include profile column for better data tracking
+  - Import warnings when merging data from different profiles
+  - Backward compatible with legacy exports (pre-profile system)
+  - Multi-profile imports restore all profiles and their data automatically
+
+### Changed
+- **Performance Optimization**: Profile management system optimizations
+  - Implemented caching layer for active profile ID (5-second TTL) to reduce AsyncStorage calls
+  - Optimized profile stats loading with parallel Promise.all instead of sequential loops
+  - Reduced profile context refetches by updating state directly after mutations
+  - Added React.memo to ProfileCard component to prevent unnecessary re-renders
+  - Extracted ProfileCard component for better component composition
+  - Added useCallback/useMemo optimizations to ProfileManagementScreen handlers
+  - Extracted and deduplicated validation logic in ProfileService
+- **Export/Import UI**: Settings screen now shows active profile name in export/import descriptions
+  - Export dialog offers single profile or all profiles option when multiple profiles exist
+  - Import dialog clarifies that data will be merged into current profile
+  - Toast notifications include profile information for better user feedback
+
 ### Planned (Phase 3)
 - Cloud sync and backup functionality
 - Export to PDF reports
@@ -16,7 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Multi-user support
 - Expense sharing & splitting
 
-## [1.1.0] - In Development (Phase 2)
+## [1.1.0] - 2026-02-25 (Phase 2 Complete)
 
 ### Added
 - Receipt OCR for automatic data extraction
@@ -72,6 +106,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AnalyticsScreen: View advanced analytics and insights
 - SecuritySettingsScreen: Configure biometric and passcode security
 - CurrencySettingsScreen: Select and manage currencies
+- ProfileManagementScreen: Create and manage user profiles with custom avatars and colors
 
 ### New Services
 - OCRService: Receipt text extraction and data parsing
@@ -81,6 +116,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - RecurringExpenseService: Recurring expense management
 - AnalyticsService: Advanced analytics and insights
 - ThemeService: Light and dark theme management
+- ProfileService: User profile management with custom avatars and statistics
+- LocationService: Geolocation-based currency detection
+- ImageStorageService: Receipt image storage and management
+- ExportService: Data export functionality (JSON and CSV)
+- ImportService: Data import from JSON and CSV files
 
 ### Changed
 - Enhanced Settings screen with new options
@@ -188,4 +228,4 @@ For questions about specific changes or to report issues:
 
 ---
 
-*Last updated: February 7, 2026*
+*Last updated: February 25, 2026*
