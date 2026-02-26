@@ -16,17 +16,16 @@ interface PasscodeHash {
 
 const BiometricService = {
   /**
-   * Generate a salted hash for a passcode using PBKDF2.
+   * Generate a salted hash for a passcode using SHA-256.
+   * Note: uses a single SHA-256 digest with a random salt for storage.
    */
   async _hashPasscode(passcode: string, salt?: string): Promise<PasscodeHash> {
     try {
       const useSalt = salt || Crypto.randomUUID();
-      const iterations = 100000;
-      const keyLength = 32;
       
       const hash = await Crypto.digestStringAsync(
         Crypto.CryptoDigestAlgorithm.SHA256,
-        `${passcode}${useSalt}${iterations}`
+        `${passcode}${useSalt}`
       );
       
       return {

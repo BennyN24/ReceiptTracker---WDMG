@@ -3,6 +3,7 @@ import * as Sharing from 'expo-sharing';
 import { StorageService } from './StorageService';
 import { ProfileService } from './ProfileService';
 import RecurringExpenseService from './RecurringExpenseService';
+import { APP_VERSION } from '../config/app';
 import type { ExportResult, ExportData, MultiProfileExportData, Expense, Category, Profile } from '../types';
 
 const ExportService = {
@@ -75,7 +76,7 @@ const ExportService = {
         activeProfileId,
         profileData,
         exportDate: new Date().toISOString(),
-        appVersion: '1.0.0',
+        appVersion: APP_VERSION,
       };
 
       const fileName = `ReceiptTracker_AllProfiles_${this._formatDateForFilename()}.json`;

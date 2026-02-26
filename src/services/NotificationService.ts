@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import CurrencyService from './CurrencyService';
 import type { NotificationHistoryItem } from '../types';
 
 const NOTIFICATION_HISTORY_KEY = '@notification_history';
@@ -39,12 +40,13 @@ const NotificationService = {
   /**
    * Send a budget alert notification.
    */
-  async sendBudgetAlert(budgetName: string, percentage: number, amount: number): Promise<void> {
+  async sendBudgetAlert(budgetName: string, percentage: number, amount: number, currencyCode: string = 'USD'): Promise<void> {
     try {
+      const symbol = CurrencyService.getSymbol(currencyCode);
       const title = percentage >= 100 ? '🚨 Budget Exceeded!' : '⚠️ Budget Warning';
       const body = percentage >= 100
         ? `You've exceeded your ${budgetName} budget!`
-        : `You've used ${percentage.toFixed(0)}% of your ${budgetName} budget ($${amount.toFixed(2)} remaining)`;
+        : `You've used ${percentage.toFixed(0)}% of your ${budgetName} budget (${symbol}${amount.toFixed(2)} remaining)`;
 
       await Notifications.scheduleNotificationAsync({
         content: { title, body },
@@ -101,6 +103,7 @@ const NotificationService = {
           type: Notifications.SchedulableTriggerInputTypes.DAILY,
           hour,
           minute,
+          repeats: true,
         },
       });
     } catch (error) {
@@ -130,6 +133,7 @@ const NotificationService = {
           weekday,
           hour,
           minute,
+          repeats: true,
         },
       });
     } catch (error) {

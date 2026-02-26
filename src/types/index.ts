@@ -17,6 +17,7 @@ export interface Expense {
   notes?: string;
   receiptImage?: string;
   isRecurring?: boolean;
+  recurringId?: string;
   frequency?: Frequency | null;
   createdAt?: string;
   updatedAt?: string;
