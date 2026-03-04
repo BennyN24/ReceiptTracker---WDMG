@@ -65,16 +65,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('monthly');
   const [showTipsBanner, setShowTipsBanner] = useState<boolean>(true);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [])
-  );
-
   const loadData = useCallback(async (): Promise<void> => {
     try {
       const [expensesData, budgetsData, categoriesData, settingsData] = await Promise.all([
@@ -100,6 +90,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
   const onRefresh = useCallback(async (): Promise<void> => {
     setRefreshing(true);
