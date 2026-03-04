@@ -1,26 +1,39 @@
-import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CurrencyService from './CurrencyService';
 import type { NotificationHistoryItem } from '../types';
 
-const NOTIFICATION_HISTORY_KEY = '@notification_history';
+let Notifications: any;
 
-// Configure default notification behavior
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+try {
+  Notifications = require('expo-notifications');
+  // Configure default notification behavior only if available
+  if (Notifications) {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
+  }
+} catch (error) {
+  console.log('Expo Notifications not available (Expo Go mode)');
+}
+
+const NOTIFICATION_HISTORY_KEY = '@notification_history';
 
 const NotificationService = {
   /**
    * Initialize notifications and request permissions.
    */
   async initialize(): Promise<boolean> {
+    if (!Notifications) {
+      console.log('Notifications not available in Expo Go - skipping initialization');
+      return false;
+    }
+
     try {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
@@ -41,6 +54,8 @@ const NotificationService = {
    * Send a budget alert notification.
    */
   async sendBudgetAlert(budgetName: string, percentage: number, amount: number, currencyCode: string = 'USD'): Promise<void> {
+    if (!Notifications) return;
+
     try {
       const symbol = CurrencyService.getSymbol(currencyCode);
       const title = percentage >= 100 ? '🚨 Budget Exceeded!' : '⚠️ Budget Warning';
@@ -63,6 +78,8 @@ const NotificationService = {
    * Send an expense reminder notification.
    */
   async sendExpenseReminder(): Promise<void> {
+    if (!Notifications) return;
+
     try {
       await Notifications.scheduleNotificationAsync({
         content: {
@@ -86,6 +103,8 @@ const NotificationService = {
    * Schedule a daily summary notification.
    */
   async scheduleDailySummary(hour: number = 20, minute: number = 0): Promise<void> {
+    if (!Notifications) return;
+
     try {
       try {
         await Notifications.cancelScheduledNotificationAsync('daily_summary');
@@ -115,6 +134,8 @@ const NotificationService = {
    * Schedule a weekly review notification.
    */
   async scheduleWeeklyReview(weekday: number = 3, hour: number = 10, minute: number = 0): Promise<void> {
+    if (!Notifications) return;
+
     try {
       try {
         await Notifications.cancelScheduledNotificationAsync('weekly_review');
@@ -145,6 +166,8 @@ const NotificationService = {
    * Cancel all scheduled notifications.
    */
   async cancelAllNotifications(): Promise<void> {
+    if (!Notifications) return;
+
     try {
       await Notifications.cancelAllScheduledNotificationsAsync();
     } catch (error) {

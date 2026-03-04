@@ -1,6 +1,16 @@
-import { InterstitialAd, AdEventType } from 'react-native-google-mobile-ads';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AdService from './AdService';
+
+let InterstitialAd: any;
+let AdEventType: any;
+
+try {
+  const adModule = require('react-native-google-mobile-ads');
+  InterstitialAd = adModule.InterstitialAd;
+  AdEventType = adModule.AdEventType;
+} catch (error) {
+  console.log('Google Mobile Ads not available (Expo Go mode)');
+}
 
 class InterstitialAdManager {
   private static readonly EXPENSE_AD_FREQUENCY = 3;
@@ -8,7 +18,7 @@ class InterstitialAdManager {
   private static readonly EXPENSE_COUNT_KEY = '@ad_expense_count';
   private static readonly BUDGET_COUNT_KEY = '@ad_budget_count';
 
-  private static interstitialAd: InterstitialAd | null = null;
+  private static interstitialAd: any | null = null;
   private static isLoading = false;
   private static isLoaded = false;
   private static expenseCount = 0;
@@ -17,6 +27,11 @@ class InterstitialAdManager {
 
   static async loadInterstitialAd(): Promise<void> {
     if (this.isLoading || this.isLoaded) return;
+
+    if (!InterstitialAd) {
+      console.log('InterstitialAd not available in Expo Go - skipping');
+      return;
+    }
 
     this.isLoading = true;
     this.cleanup();

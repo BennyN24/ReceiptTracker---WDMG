@@ -1,10 +1,25 @@
-import mobileAds, { MaxAdContentRating } from 'react-native-google-mobile-ads';
+let mobileAds: any;
+let MaxAdContentRating: any;
+
+try {
+  const adModule = require('react-native-google-mobile-ads');
+  mobileAds = adModule.default;
+  MaxAdContentRating = adModule.MaxAdContentRating;
+} catch (error) {
+  console.log('Google Mobile Ads not available (Expo Go mode)');
+}
 
 class AdService {
   private static initialized = false;
 
   static async initialize(): Promise<void> {
     if (this.initialized) return;
+
+    if (!mobileAds) {
+      console.log('AdMob not available in Expo Go - skipping initialization');
+      this.initialized = true;
+      return;
+    }
 
     try {
       await mobileAds().initialize();
@@ -19,6 +34,7 @@ class AdService {
       console.log('AdMob initialized successfully');
     } catch (error) {
       console.error('AdMob initialization error:', error);
+      this.initialized = true;
     }
   }
 

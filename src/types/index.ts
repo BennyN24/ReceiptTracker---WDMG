@@ -170,7 +170,9 @@ export interface ExtractedReceiptData {
   subtotal?: number | null;
   paymentMethod?: string;
   confidence?: number;
-  source?: 'gemini_ai' | 'google_vision' | 'pattern_matching';
+  source?: 'gemini_ai' | 'google_vision' | 'google_cloud_vision' | 'pattern_matching';
+  error?: string;
+  message?: string;
 }
 
 export interface ExtractionQuality {
