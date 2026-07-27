@@ -8,7 +8,6 @@ const API_BASE: string = PROD_API_BASE;
 
 export const API_ENDPOINTS: ApiEndpoints = {
   geminiAnalyze: `${API_BASE}/api/gemini-analyze`,
-  googleVisionOcr: `${API_BASE}/api/google-vision-ocr`,
 };
 
 export default API_ENDPOINTS;

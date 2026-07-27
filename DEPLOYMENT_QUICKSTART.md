@@ -5,14 +5,13 @@
 Your ReceiptTracker app now uses a **secure backend proxy** to protect API keys. The architecture is:
 
 ```
-Mobile App → Vercel Backend → AI Services (Gemini/Google Cloud Vision)
+Mobile App → Vercel Backend → AI Services (Gemini)
 ```
 
 ## Files Created
 
 ### Backend API (`/api` directory)
 - `api/gemini-analyze.js` - Gemini AI proxy endpoint
-- `api/google-vision-ocr.js` - Google Cloud Vision proxy endpoint
 - `api/package.json` - Backend dependencies
 - `api/vercel.json` - Vercel deployment configuration
 - `api/.env.example` - Environment variable template
@@ -39,7 +38,6 @@ npm install
 ```bash
 vercel login
 vercel secrets add gemini-api-key YOUR_GEMINI_KEY
-vercel secrets add google-cloud-vision-api-key YOUR_GOOGLE_VISION_KEY
 ```
 
 ### 4. Deploy to Vercel
@@ -68,7 +66,6 @@ npm start
 Create `api/.env`:
 ```
 GEMINI_API_KEY=your_key
-GOOGLE_CLOUD_VISION_API_KEY=your_key
 ```
 
 Run local server:

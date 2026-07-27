@@ -382,7 +382,7 @@ const CaptureScreen: React.FC<CaptureScreenProps> = ({ navigation }) => {
                   <Text fontWeight="$semibold" fontSize="$lg" color={colors.text} mt="$4" mb="$1">Receipt processed!</Text>
                   <Box bg={ocrData.source === 'gemini_ai' ? colors.info : colors.primaryLight} borderRadius="$full" px="$3" py="$1" mb="$2">
                     <Text fontSize="$xs" color={colors.white} fontWeight="$semibold">
-                      {ocrData.source === 'gemini_ai' ? 'AI' : ocrData.source === 'google_cloud_vision' ? 'Cloud Vision' : 'OCR'}
+                      {ocrData.source === 'gemini_ai' ? 'AI' : 'OCR'}
                     </Text>
                   </Box>
                   {ocrData.confidence !== null && ocrData.confidence !== undefined && (

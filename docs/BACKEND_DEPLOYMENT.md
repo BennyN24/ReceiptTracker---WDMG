@@ -4,12 +4,12 @@ This guide explains how to deploy the ReceiptTracker backend API proxy to Vercel
 
 ## Overview
 
-The backend API acts as a secure proxy between your mobile app and external AI services (Gemini AI and Google Cloud Vision). This architecture keeps your API keys secure on the server side and prevents them from being exposed in the mobile app bundle.
+The backend API acts as a secure proxy between your mobile app and external AI services (Gemini AI). This architecture keeps your API keys secure on the server side and prevents them from being exposed in the mobile app bundle.
 
 ## Architecture
 
 ```
-Mobile App → Vercel Backend API → AI Services (Gemini/Google Cloud Vision)
+Mobile App → Vercel Backend API → AI Services (Gemini)
 ```
 
 **Benefits:**
@@ -52,7 +52,6 @@ Create `api/.env` file (for local testing):
 
 ```bash
 GEMINI_API_KEY=your_actual_gemini_api_key_here
-GOOGLE_CLOUD_VISION_API_KEY=your_actual_google_cloud_vision_key_here
 ```
 
 **Important**: Never commit this file to git (already in `.gitignore`)
@@ -67,7 +66,6 @@ This starts a local development server at `http://localhost:3000`
 
 Test endpoints:
 - `http://localhost:3000/api/gemini-analyze`
-- `http://localhost:3000/api/google-vision-ocr`
 
 ### Step 6: Login to Vercel
 
@@ -80,9 +78,6 @@ vercel login
 ```bash
 # Add Gemini API Key
 vercel secrets add gemini-api-key your_actual_gemini_api_key_here
-
-# Add Google Cloud Vision API Key
-vercel secrets add google-cloud-vision-api-key your_actual_google_cloud_vision_key_here
 ```
 
 **Note**: Secrets are encrypted and stored securely on Vercel.
@@ -164,38 +159,6 @@ X-Client-ID: unique_client_identifier
   "items": [...],
   "category": "Food & Dining",
   "confidence": 0.85
-}
-```
-
-### POST /api/google-vision-ocr
-
-Extracts text from receipt images using Google Cloud Vision.
-
-**Request:**
-```json
-{
-  "base64Image": "base64_encoded_image_data"
-}
-```
-
-**Headers:**
-```
-Content-Type: application/json
-X-Client-ID: unique_client_identifier
-```
-
-**Response:**
-```json
-{
-  "responses": [
-    {
-      "textAnnotations": [
-        {
-          "description": "extracted text from receipt"
-        }
-      ]
-    }
-  ]
 }
 ```
 

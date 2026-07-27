@@ -1,20 +1,4 @@
-import { File } from 'expo-file-system';
-import { API_ENDPOINTS } from '../config/api';
-import * as Crypto from 'expo-crypto';
 import type { ReceiptItem, ExtractedReceiptData } from '../types';
-
-let _clientId: string | null = null;
-
-const getClientId = async (): Promise<string> => {
-  if (_clientId) return _clientId;
-  const randomBytes = await Crypto.getRandomBytesAsync(32);
-  const hex = Array.from(randomBytes).map((b: number) => b.toString(16).padStart(2, '0')).join('');
-  _clientId = await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    hex
-  );
-  return _clientId;
-};
 
 // ─── Internal types ───────────────────────────────────────
 
@@ -35,15 +19,6 @@ interface ExtractionQualityResult {
   message: string;
   confidence?: number;
   issues?: string[];
-}
-
-interface VisionApiResponse {
-  error?: { message: string };
-  responses?: Array<{
-    textAnnotations?: Array<{
-      description: string;
-    }>;
-  }>;
 }
 
 interface DatePatternEntry {
@@ -89,86 +64,15 @@ const OCRService = {
   },
 
   /**
-   * Extract text from receipt image using cloud-based OCR
-   * Falls back to basic pattern matching if API unavailable
+   * Extract text from receipt image
+   * Uses pattern matching and AI analysis
    */
   async extractReceiptData(imageUri: string): Promise<ParsedReceipt | null> {
     try {
-      // Try cloud-based OCR first (Google Cloud Vision, AWS Textract, etc.)
-      const extractedData = await this._tryCloudOCR(imageUri);
-      if (extractedData) {
-        return extractedData;
-      }
-
-      // Fallback to local pattern matching
+      // Use local pattern matching
       return await this._extractWithPatternMatching(imageUri);
     } catch (error) {
       console.error('OCR extraction error:', error);
-      return null;
-    }
-  },
-
-  /**
-   * Attempt cloud-based OCR extraction using Google Cloud Vision API via backend proxy
-   */
-  async _tryCloudOCR(imageUri: string): Promise<ParsedReceipt | null> {
-    try {
-      if (!API_ENDPOINTS.googleVisionOcr) {
-        return null;
-      }
-
-      const file = new File(imageUri);
-      const base64Image: string = await file.base64();
-
-      const clientId = await getClientId();
-
-      const response = await fetch(API_ENDPOINTS.googleVisionOcr, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Client-ID': clientId,
-        },
-        body: JSON.stringify({ base64Image }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        if (response.status === 429) {
-          console.warn('OCR rate limit exceeded. Please wait before scanning another receipt.');
-        } else {
-          console.warn(`Google Cloud Vision API error: ${response.status}`, errorData);
-        }
-        return null;
-      }
-
-      const result: VisionApiResponse = await response.json();
-
-      if (result.error) {
-        console.warn('Google Cloud Vision API error:', result.error.message);
-        return null;
-      }
-
-      if (result.responses && result.responses.length > 0) {
-        const textAnnotations = result.responses[0].textAnnotations;
-        if (textAnnotations && textAnnotations.length > 0) {
-          const fullText = textAnnotations[0].description;
-          const receiptType = this._detectReceiptType(fullText);
-          const parsedData = this.parseReceiptText(fullText);
-
-          if (parsedData) {
-            return {
-              ...parsedData,
-              receiptType,
-              source: 'google_cloud_vision',
-            };
-          }
-        }
-      }
-
-      return null;
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.warn('Google Cloud Vision API error:', message);
       return null;
     }
   },
